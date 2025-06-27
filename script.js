@@ -1,0 +1,1 @@
+console.log('Système D2B1 initialisé');
