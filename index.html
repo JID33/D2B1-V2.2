@@ -3,110 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>D2B1 - Système Rotatif</title>
+  <title>D2B1 Rotatif</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <object data="admin.svg" type="image/svg+xml"></object>
-    <img src="assets/logo.svg" alt="D2B1 Logo" height="60" />
-    <h1>Plateforme Rotative D2B1</h1>
-  </header>
-
-  <main>
-    <section id="authSection">
-      <h2>Espace Sécurisé</h2>
-      <input type="password" id="adminPass" placeholder="Mot de passe admin" />
-      <button onclick="toggleVisibility('adminPass')">👁️</button>
-      <button onclick="checkAdminStep1()">🔐 Connexion</button>
-      <p id="otpInfo" style="display:none;">Un code vous a été envoyé</p>
-      <input type="password" id="otpInput" placeholder="Code OTP" style="display:none;" />
-      <button onclick="chec<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>D2B1 - Système Rotatif</title>
-  <link rel="stylesheet" href="style.css"/>
-</head>
-   <html>     
-<body>
   <div id="app">
-    <h1>Bienvenue sur D2B1 Rotatif</h1>
-    <div id="auth"></div>
-    <div id="admin-panel" style="display:none;"></div>
+    <h1>D2B1 - Système Rotatif</h1>
+    <div id="adminZone">
+      <h2>Zone Administrateur</h2>
+      <button onclick="fermerSysteme()">🛑 Fermer le système</button>
+      <button onclick="ouvrirCalculatrice()">🧮 Calculatrice</button>
+      <div id="historiqueDemandes"></div>
+    </div>
+
+    <div id="superviseursContainer">
+      <button onclick="ajouterSuperviseur()">➕ Ajouter Superviseur</button>
+    </div>
   </div>
 
-  <!-- Scripts -->
-  <script src="data.js"></script>
-  <script src="calculatrice.js"></script>
-  <script src="script.js"></script>
-</body>
-</html> 
-    <button>kAdminStep2()" style="display:none;">✅ Vérifier</button>
-    </section>
-
-    <section id="dashboard" style="display:none;">
-      <h2>Zone Administrateur</h2<!DOCTYPE html>
-      
-      <object data="admin.svg" type="image/svg+xml"></object>
-      
-<html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>D2B1 - Système Rotatif</title>
-  <link rel="stylesheet" href="style.css"/>
-</head>
-<body>
-  <div id="app">
-    <h1>Bienvenue sur D2B1 Rotatif</h1>
-    <div id="auth"></div>
-    <div id="admin-panel" style="display:none;"></div>
+  <div id="calculatriceModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <h3>Calculatrice Rotative</h3>
+      <label>Montant investi par personne : <input type="number" id="montantInvesti" value="10"></label>
+      <label>Nombre de personnes : <input type="number" id="nbParticipants" value="10"></label>
+      <button onclick="calculerGains()">Calculer</button>
+      <p id="resultatCalcul"></p>
+      <svg id="graphiqueGain" width="300" height="100"></svg>
+      <button onclick="fermerCalculatrice()">Fermer</button>
+    </div>
   </div>
 
-  <!-- Scripts -->
   <script src="data.js"></script>
   <script src="calculatrice.js"></script>
-  <script src="script.js"></script>
-</body>
-</html><!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>D2B1 - Système Rotatif</title>
-  <link rel="stylesheet" href="style.css"/>
-</head>
-<body>
-  <div id="app">
-    <h1>Bienvenue sur D2B1 Rotatif</h1>
-    <div id="auth"></div>
-    <div id="admin-panel" style="display:none;"></div>
-  </div>
-
-  <!-- Scripts -->
-  <script src="data.js"></script>
-  <script src="calculatrice.js"></script>
-  <script src="script.js"></script>
-</body>
-</html>
-
->
-      <button onclick="ajouterSuperviseur()">➕ Superviseur</button>
-      <button onclick="exportHistorique()">📤 Exporter Historique</button>
-      <button onclick="fermerSysteme()">🚨 Fermer le Système</button>
-      <div id="superviseursContainer"></div>
-
-      <h3>Demandes reçues :</h3>
-      <div id="demandesContainer"></div>
-    </section>
-  </main>
-  <!-- Scripts -->
-<script src="data.js"></script>
-<script src="calculatrice.js"></script>
-<script src="script.js"></script>
-
   <script src="script.js"></script>
 </body>
 </html>
