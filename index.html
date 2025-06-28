@@ -7,21 +7,18 @@
     body { font-family: Arial; background: #eef2f7; margin: 0; padding: 20px; }
     h1 { text-align: center; }
     .admin-container { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; }
-    .admin-box, .superviseur-section { background: white; padding: 20px; margin: 10px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 48%; min-width: 300px; }
+    .admin-box, .superviseur-section {
+      background: white; padding: 20px; margin: 10px; border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 48%; min-width: 300px;
+    }
     .superviseur-card, .leader-card {
-      border: 1px solid #ccc;
-      padding: 15px;
-      margin-top: 15px;
-      border-radius: 8px;
+      border: 1px solid #ccc; padding: 15px; margin-top: 15px; border-radius: 8px;
       background-color: #f9f9f9;
     }
     .leader-card { background: #f0fff0; }
     .btn {
-      padding: 8px 12px;
-      margin: 5px;
-      cursor: pointer;
-      border: none;
-      border-radius: 5px;
+      padding: 8px 12px; margin: 5px; cursor: pointer;
+      border: none; border-radius: 5px;
     }
     .btn-blue { background: #3498db; color: white; }
     .btn-red { background: #e74c3c; color: white; }
@@ -30,6 +27,7 @@
     .btn-orange { background: #e67e22; color: white; }
     input[type="text"] { width: 90%; padding: 8px; margin: 5px 0; }
     .bold-center { text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 10px; }
+    #svgChartContainer { border:1px solid #ccc; padding:10px; margin-top:20px; }
   </style>
 </head>
 <body>
@@ -41,6 +39,13 @@
       <div class="bold-center">👑 Admin Principal</div>
       <p>Nom : Admin Master</p>
       <p>Email : admin@d2b1.com</p>
+
+      <!-- Graphique SVG -->
+      <h3>📊 Évolution des gains</h3>
+      <div id="svgChartContainer">Chargement du graphique...</div>
+
+      <!-- Export -->
+      <button class="btn btn-green" onclick="exporterHistorique()">📤 Exporter Historique Excel</button>
     </div>
 
     <!-- Section des Superviseurs -->
@@ -51,7 +56,6 @@
     </div>
   </div>
 
-  <!-- Script Google Apps Script + Gestion des boutons -->
   <script>
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby44bVHJV3oXXZ7OK7vl5NuOHQdiJDmjKvSve1GfZ-We3tG2ANyAV6X5l9jSR4ls8x0/exec";
 
@@ -59,13 +63,9 @@
       fetch(GOOGLE_SCRIPT_URL, {
         method: "POST",
         mode: "no-cors",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-      })
-      .then(() => console.log("✅ Données envoyées à Google Sheets"))
-      .catch((err) => console.error("Erreur envoi Sheets:", err));
+      }).then(() => console.log("✅ Données envoyées")).catch(console.error);
     }
 
     function enregistrerAction(nom, email, superviseur, action) {
@@ -107,28 +107,54 @@
         <input type="text" placeholder="Nom du Leader" id="${leaderId}_nom" />
         <input type="text" placeholder="Email" id="${leaderId}_email" />
         <div class="bold-center">👥 Team Leader</div>
+
         <button class="btn btn-orange" onclick="enregistrerAction(
           document.getElementById('${leaderId}_nom').value,
           document.getElementById('${leaderId}_email').value,
           '${supNom}',
-          'Demande Réinitialisation')">🔁 Demande Réinitialisation</button>
+          'Demande Réinitialisation')">🔁 Réinitialisation</button>
 
         <button class="btn btn-yellow" onclick="enregistrerAction(
           document.getElementById('${leaderId}_nom').value,
           document.getElementById('${leaderId}_email').value,
           '${supNom}',
-          'Demande Déconnexion')">🚪 Demande Déconnexion</button>
+          'Demande Déconnexion')">🚪 Déconnexion</button>
 
         <button class="btn btn-green" onclick="enregistrerAction(
           document.getElementById('${leaderId}_nom').value,
           document.getElementById('${leaderId}_email').value,
           '${supNom}',
-          'Demande Reconnexion')">🔓 Demande Reconnexion</button>
+          'Demande Reconnexion')">🔓 Reconnexion</button>
+
+        <button class="btn btn-blue" onclick="this.innerText='✔️ Approuvé'; this.disabled=true">✅ Approuver</button>
 
         <button class="btn btn-red" onclick="this.parentElement.remove()">🗑️ Enlever TL</button>
       `;
       leadersContainer.appendChild(card);
     }
+
+    function exporterHistorique() {
+      alert("📤 Export depuis Google Sheets à venir — à activer dans Apps Script !");
+    }
+
+    // SVG simplifié en exemple
+    const svgCode = `
+      <svg width="300" height="100" xmlns="http://www.w3.org/2000/svg">
+        <polyline fill="none" stroke="#2ecc71" stroke-width="3"
+          points="0,80 60,60 120,40 180,30 240,25" />
+        <circle cx="0" cy="80" r="4" fill="#2ecc71"/>
+        <circle cx="60" cy="60" r="4" fill="#2ecc71"/>
+        <circle cx="120" cy="40" r="4" fill="#2ecc71"/>
+        <circle cx="180" cy="30" r="4" fill="#2ecc71"/>
+        <circle cx="240" cy="25" r="4" fill="#2ecc71"/>
+        <text x="0" y="95" font-size="12">Jour 1</text>
+        <text x="60" y="95" font-size="12">Jour 2</text>
+        <text x="120" y="95" font-size="12">Jour 3</text>
+        <text x="180" y="95" font-size="12">Jour 4</text>
+        <text x="240" y="95" font-size="12">Jour 5</text>
+      </svg>
+    `;
+    document.getElementById("svgChartContainer").innerHTML = svgCode;
   </script>
 </body>
 </html>
