@@ -46,7 +46,66 @@ button:hover {
 
 .superviseur-card {
   border: 2px solid blue;
+  padding: 1body {
+  font-family: Arial, sans-serif;
+  background: #f4f8fc;
+  margin: 0;
+  padding: 0;
+}
+
+#app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+  color: #004080;
+}
+
+button {
+  margin: 8px 4px;
+  padding: 10px 16px;
+  background: #004080;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+button:hover {
+  background: #003060;
+}
+
+.superviseur {
+  background-color: #e3f2fd;
   padding: 10px;
+  margin-top: 10px;
+  border-left: 4px solid #2196f3;
+}
+
+.team-leader {
+  background-color: #d0f0c0;
+  margin: 5px;
+  padding: 8px;
+  border-left: 4px solid #4caf50;
+}
+
+.participant {
+  background-color: #eee;
+  padding: 6px;
+  margin: 3px;
+}
+
+.alert {
+  background-color: red;
+  color: white;
+  padding: 10px;
+  margin: 10px 0;
+  font-weight: bold;
+}
+0px;
   margin-top: 10px;
   border-radius: 8px;
 }
