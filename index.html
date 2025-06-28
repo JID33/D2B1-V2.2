@@ -6,17 +6,17 @@
   <style>
     body { font-family: Arial; background: #eef2f7; margin: 0; padding: 20px; }
     h1 { text-align: center; }
-    .admin-container { display: flex; justify-content: space-between; align-items: flex-start; }
-    .admin-box, .superviseur-section { background: white; padding: 20px; margin: 10px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 48%; }
+    .admin-container { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; }
+    .admin-box, .superviseur-section { background: white; padding: 20px; margin: 10px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 48%; min-width: 300px; }
     .superviseur-card, .leader-card { border: 1px solid #ccc; padding: 15px; margin-top: 15px; border-radius: 8px; background-color: #f9f9f9; }
-    .leader-card { background: #f0fff0; }
-    .btn { padding: 8px 12px; margin: 5px; cursor: pointer; border: none; border-radius: 5px; }
+    .leader-card { background: #eaffea; }
+    .btn { padding: 8px 12px; margin: 5px; cursor: pointer; border: none; border-radius: 5px; font-size: 14px; }
     .btn-blue { background: #3498db; color: white; }
     .btn-red { background: #e74c3c; color: white; }
     .btn-green { background: #2ecc71; color: white; }
     .btn-yellow { background: #f1c40f; color: black; }
     .btn-orange { background: #e67e22; color: white; }
-    input[type="text"] { width: 90%; padding: 8px; margin: 5px 0; }
+    input[type="text"] { width: 95%; padding: 8px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; }
     .bold-center { text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 10px; }
   </style>
 </head>
@@ -46,7 +46,7 @@
       const card = document.createElement("div");
       card.className = "superviseur-card";
       card.innerHTML = `
-        <input type="text" placeholder="Nom du Superviseur" id="${id}_nom" />
+        <input type="text" placeholder="Nom du Superviseur (sp-JEAN...)" id="${id}_nom" />
         <input type="text" placeholder="Email" />
         <div class="bold-center">🧑‍💼 Superviseur</div>
         <button class="btn btn-green" onclick="ajouterLeader('${id}')">👤 Ajouter Team Leader</button>
@@ -62,12 +62,12 @@
       const card = document.createElement("div");
       card.className = "leader-card";
       card.innerHTML = `
-        <input type="text" placeholder="Nom du Leader" />
+        <input type="text" placeholder="Nom du Leader (tl-JULES...)" />
         <input type="text" placeholder="Email" />
         <div class="bold-center">👥 Team Leader</div>
-        <button class="btn btn-orange" onclick="alert('Demande de Réinitialisation envoyée à Superviseur')">🔁 Demande Réinitialisation</button>
-        <button class="btn btn-yellow" onclick="alert('Demande de Déconnexion envoyée à Superviseur')">🚪 Demande Déconnexion</button>
-        <button class="btn btn-green" onclick="alert('Demande de Reconnexion envoyée à Superviseur')">🔓 Demande Reconnexion</button>
+        <button class="btn btn-orange" onclick="alert('🔁 Demande de Réinitialisation envoyée au Superviseur')">🔁 Demande Réinitialisation</button>
+        <button class="btn btn-yellow" onclick="alert('🚪 Demande de Déconnexion envoyée au Superviseur')">🚪 Demande Déconnexion</button>
+        <button class="btn btn-green" onclick="alert('🔓 Demande de Reconnexion envoyée au Superviseur')">🔓 Demande Reconnexion</button>
         <button class="btn btn-red" onclick="this.parentElement.remove()">🗑️ Enlever TL</button>
       `;
       leadersContainer.appendChild(card);
