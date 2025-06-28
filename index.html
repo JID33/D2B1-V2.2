@@ -2,39 +2,76 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>D2B1 Rotatif</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>D2B1 - Système Rotatif</title>
+  <style>
+    body { font-family: Arial; background: #eef2f7; margin: 0; padding: 20px; }
+    h1 { text-align: center; }
+    .admin-container { display: flex; justify-content: space-between; align-items: flex-start; }
+    .admin-box, .superviseur-section { background: white; padding: 20px; margin: 10px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 48%; }
+    .superviseur-card, .leader-card { border: 1px solid #ccc; padding: 15px; margin-top: 15px; border-radius: 8px; background-color: #f9f9f9; }
+    .leader-card { background: #f0fff0; }
+    .btn { padding: 8px 12px; margin: 5px; cursor: pointer; border: none; border-radius: 5px; }
+    .btn-blue { background: #3498db; color: white; }
+    .btn-red { background: #e74c3c; color: white; }
+    .btn-green { background: #2ecc71; color: white; }
+    .btn-yellow { background: #f1c40f; color: black; }
+    .btn-orange { background: #e67e22; color: white; }
+    input[type="text"] { width: 90%; padding: 8px; margin: 5px 0; }
+    .bold-center { text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 10px; }
+  </style>
 </head>
 <body>
-  <div id="app">
-    <h1>D2B1 - Système Rotatif</h1>
-    <div id="adminZone">
-      <h2>Zone Administrateur</h2>
-      <button onclick="fermerSysteme()">🛑 Fermer le système</button>
-      <button onclick="ouvrirCalculatrice()">🧮 Calculatrice</button>
-      <div id="historiqueDemandes"></div>
+  <h1>D2B1 - Système Rotatif</h1>
+
+  <div class="admin-container">
+    <!-- Boîte Admin Principal -->
+    <div class="admin-box">
+      <div class="bold-center">👑 Admin Principal</div>
+      <p>Nom : Admin Master</p>
+      <p>Email : admin@d2b1.com</p>
     </div>
 
-    <div id="superviseursContainer">
-      <button onclick="ajouterSuperviseur()">➕ Ajouter Superviseur</button>
-    </div>
-  </div>
-
-  <div id="calculatriceModal" class="modal" style="display: none;">
-    <div class="modal-content">
-      <h3>Calculatrice Rotative</h3>
-      <label>Montant investi par personne : <input type="number" id="montantInvesti" value="10"></label>
-      <label>Nombre de personnes : <input type="number" id="nbParticipants" value="10"></label>
-      <button onclick="calculerGains()">Calculer</button>
-      <p id="resultatCalcul"></p>
-      <svg id="graphiqueGain" width="300" height="100"></svg>
-      <button onclick="fermerCalculatrice()">Fermer</button>
+    <!-- Section des Superviseurs -->
+    <div class="superviseur-section">
+      <div class="bold-center">📌 Superviseurs & Leaders</div>
+      <button onclick="ajouterSuperviseur()" class="btn btn-blue">➕ Ajouter Superviseur</button>
+      <div id="superviseurContainer"></div>
     </div>
   </div>
 
-  <script src="data.js"></script>
-  <script src="calculatrice.js"></script>
-  <script src="script.js"></script>
+  <script>
+    function ajouterSuperviseur() {
+      const id = "sup_" + Date.now();
+      const container = document.getElementById("superviseurContainer");
+      const card = document.createElement("div");
+      card.className = "superviseur-card";
+      card.innerHTML = `
+        <input type="text" placeholder="Nom du Superviseur" id="${id}_nom" />
+        <input type="text" placeholder="Email" />
+        <div class="bold-center">🧑‍💼 Superviseur</div>
+        <button class="btn btn-green" onclick="ajouterLeader('${id}')">👤 Ajouter Team Leader</button>
+        <button class="btn btn-red" onclick="this.parentElement.remove()">🗑️ Enlever Superviseur</button>
+        <div id="${id}_leaders"></div>
+      `;
+      container.appendChild(card);
+    }
+
+    function ajouterLeader(superviseurId) {
+      const leadersContainer = document.getElementById(`${superviseurId}_leaders`);
+      const leaderId = "leader_" + Date.now();
+      const card = document.createElement("div");
+      card.className = "leader-card";
+      card.innerHTML = `
+        <input type="text" placeholder="Nom du Leader" />
+        <input type="text" placeholder="Email" />
+        <div class="bold-center">👥 Team Leader</div>
+        <button class="btn btn-orange" onclick="alert('Demande de Réinitialisation envoyée à Superviseur')">🔁 Demande Réinitialisation</button>
+        <button class="btn btn-yellow" onclick="alert('Demande de Déconnexion envoyée à Superviseur')">🚪 Demande Déconnexion</button>
+        <button class="btn btn-green" onclick="alert('Demande de Reconnexion envoyée à Superviseur')">🔓 Demande Reconnexion</button>
+        <button class="btn btn-red" onclick="this.parentElement.remove()">🗑️ Enlever TL</button>
+      `;
+      leadersContainer.appendChild(card);
+    }
+  </script>
 </body>
 </html>
