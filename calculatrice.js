@@ -1,39 +1,44 @@
-function calculerGains() {
-  const montant = parseFloat(document.getElementById("montantInvesti").value);
-  const nb = parseInt(document.getElementById("nbParticipants").value);
+// calculatrice.js
 
-  const total = montant * nb;
-  const reinvesti = total / 3;
-  const reserve = reinvesti * 0.1;
-  const net = total - reinvesti + (reserve / 10);
+// Fonction pour calcul rotatif selon ta formule personnalisée
+function calculRotatif(investissement, totalParticipants = 10) {
+  const totalJour = investissement * totalParticipants;
+  const reinvesti = totalJour / 3;
+  const reserve = reinvesti * 0.10;
+  const reste = totalJour - reinvesti;
+  const bonus = (reserve % 1) + reste;
 
-  document.getElementById("resultatCalcul").textContent =
-    `Gains calculés : ${net.toFixed(2)} $ (réserve : ${reserve.toFixed(2)}$)`;
-
-  dessinerGraphique(net);
+  return {
+    investi: investissement,
+    gagne: Math.round(bonus),
+    reserve: Math.floor(reserve),
+    totalJour: totalJour
+  };
 }
 
-function dessinerGraphique(gain) {
-  const svg = document.getElementById("graphiqueGain");
-  svg.innerHTML = '';
-
-  const barWidth = 50;
-  const barHeight = gain;
-  const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-
-  rect.setAttribute("x", "10");
-  rect.setAttribute("y", 100 - barHeight);
-  rect.setAttribute("width", barWidth);
-  rect.setAttribute("height", barHeight);
-  rect.setAttribute("fill", "#3498db");
-
-  svg.appendChild(rect);
+// Fonction pour afficher les résultats dans une interface (si appelé depuis admin)
+function afficherCalculateur(containerId) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = `
+    <h3>Calculateur Rotatif D2B1</h3>
+    <label>Montant investi par personne ($):</label>
+    <input type="number" id="valeurInvest" value="10" min="1" />
+    <label>Nombre de participants:</label>
+    <input type="number" id="valeurParticipants" value="10" min="1" />
+    <button onclick="lancerCalcul()">Calculer</button>
+    <div id="resultatsCalcul" style="margin-top:10px;"></div>
+  `;
 }
 
-function ouvrirCalculatrice() {
-  document.getElementById("calculatriceModal").style.display = "flex";
-}
+function lancerCalcul() {
+  const montant = parseFloat(document.getElementById("valeurInvest").value);
+  const participants = parseInt(document.getElementById("valeurParticipants").value);
+  const result = calculRotatif(montant, participants);
 
-function fermerCalculatrice() {
-  document.getElementById("calculatriceModal").style.display = "none";
+  document.getElementById("resultatsCalcul").innerHTML = `
+    <strong>Total collecté:</strong> ${result.totalJour} $<br />
+    <strong>Montant réinvesti (1/3):</strong> ${(result.totalJour / 3).toFixed(2)} $<br />
+    <strong>10% de ce tiers en réserve:</strong> ${result.reserve} $<br />
+    <strong>Gains nets du participant en rotation:</strong> ${result.gagne} $
+  `;
 }
