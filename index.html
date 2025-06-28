@@ -1,12 +1,40 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>D2B1 - Authentification</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D2B1 - Système Rotatif</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>Bienvenue sur D2B1</h1>
+  <header>
+    <img src="assets/logo.svg" alt="D2B1 Logo" height="60" />
+    <h1>Plateforme Rotative D2B1</h1>
+  </header>
+
+  <main>
+    <section id="authSection">
+      <h2>Espace Sécurisé</h2>
+      <input type="password" id="adminPass" placeholder="Mot de passe admin" />
+      <button onclick="toggleVisibility('adminPass')">👁️</button>
+      <button onclick="checkAdminStep1()">🔐 Connexion</button>
+      <p id="otpInfo" style="display:none;">Un code vous a été envoyé</p>
+      <input type="password" id="otpInput" placeholder="Code OTP" style="display:none;" />
+      <button onclick="checkAdminStep2()" style="display:none;">✅ Vérifier</button>
+    </section>
+
+    <section id="dashboard" style="display:none;">
+      <h2>Zone Administrateur</h2>
+      <button onclick="ajouterSuperviseur()">➕ Superviseur</button>
+      <button onclick="exportHistorique()">📤 Exporter Historique</button>
+      <button onclick="fermerSysteme()">🚨 Fermer le Système</button>
+      <div id="superviseursContainer"></div>
+
+      <h3>Demandes reçues :</h3>
+      <div id="demandesContainer"></div>
+    </section>
+  </main>
+
   <script src="script.js"></script>
 </body>
 </html>
