@@ -57,25 +57,54 @@
   </div>
 
   <script>
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby44bVHJV3oXXZ7OK7vl5NuOHQdiJDmjKvSve1GfZ-We3tG2ANyAV6X5l9jSR4ls8x0/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby44bVHJV3oXXZ7OK7vl5NuOHQdiJDmjKvSve1GfZ-We3tG2ANyAV6X5l9jSR4ls8x0/exec";
 
-    function envoyerVersGoogleSheets(data) {
-      fetch(GOOGLE_SCRIPT_URL, {
+    // Fonction pour envoyer les données à Google Sheets
+    function envoyerVersGoogleSheets(donnees) {
+      fetch(SCRIPT_URL, {
         method: "POST",
-        mode: "no-cors",
+        body: JSON.stringify(donnees),
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then(() => console.log("✅ Données envoyées")).catch(console.error);
+      }).then((res) => res.text())
+        .then((data) => console.log("✅ Enregistrement réussi :", data))
+        .catch((err) => console.error("❌ Erreur :", err));
+    }
+
+    function demandeDeconnexion(nomLeader, email, superviseur) {
+      const data = {
+        nom: nomLeader, email, telephone: "", nif: "",
+        role: "Team Leader", typeDemande: "Demande de déconnexion",
+        superviseur, participantMontant: "", participantGain: "", messageErreur: ""
+      };
+      envoyerVersGoogleSheets(data);
+    }
+
+    function ajouterParticipant(nom, montant, gain, email = "", superviseur = "") {
+      const data = {
+        nom, email, telephone: "", nif: "",
+        role: "Participant", typeDemande: "Ajout participant",
+        superviseur, participantMontant: montant, participantGain: gain, messageErreur: ""
+      };
+      envoyerVersGoogleSheets(data);
+    }
+
+    function rapporterErreur(nomTL, email, messageErreur, superviseur) {
+      const data = {
+        nom: nomTL, email, telephone: "", nif: "",
+        role: "Team Leader", typeDemande: "Erreur",
+        superviseur, participantMontant: "", participantGain: "", messageErreur
+      };
+      envoyerVersGoogleSheets(data);
+    }
+
+    function exporterHistorique() {
+      alert("📤 Export depuis Google Sheets à venir — à activer dans Apps Script !");
     }
 
     function enregistrerAction(nom, email, superviseur, action) {
       const data = {
-        type: "historique",
-        nom: nom,
-        email: email,
-        superviseur: superviseur,
-        action: action,
-        timestamp: new Date().toISOString(),
+        type: "historique", nom, email, superviseur,
+        action, timestamp: new Date().toISOString()
       };
       envoyerVersGoogleSheets(data);
     }
@@ -107,24 +136,20 @@
         <input type="text" placeholder="Nom du Leader" id="${leaderId}_nom" />
         <input type="text" placeholder="Email" id="${leaderId}_email" />
         <div class="bold-center">👥 Team Leader</div>
-
         <button class="btn btn-orange" onclick="enregistrerAction(
           document.getElementById('${leaderId}_nom').value,
           document.getElementById('${leaderId}_email').value,
-          '${supNom}',
-          'Demande Réinitialisation')">🔁 Réinitialisation</button>
+          '${supNom}', 'Demande Réinitialisation')">🔁 Réinitialisation</button>
 
         <button class="btn btn-yellow" onclick="enregistrerAction(
           document.getElementById('${leaderId}_nom').value,
           document.getElementById('${leaderId}_email').value,
-          '${supNom}',
-          'Demande Déconnexion')">🚪 Déconnexion</button>
+          '${supNom}', 'Demande Déconnexion')">🚪 Déconnexion</button>
 
         <button class="btn btn-green" onclick="enregistrerAction(
           document.getElementById('${leaderId}_nom').value,
           document.getElementById('${leaderId}_email').value,
-          '${supNom}',
-          'Demande Reconnexion')">🔓 Reconnexion</button>
+          '${supNom}', 'Demande Reconnexion')">🔓 Reconnexion</button>
 
         <button class="btn btn-blue" onclick="this.innerText='✔️ Approuvé'; this.disabled=true">✅ Approuver</button>
 
@@ -133,12 +158,8 @@
       leadersContainer.appendChild(card);
     }
 
-    function exporterHistorique() {
-      alert("📤 Export depuis Google Sheets à venir — à activer dans Apps Script !");
-    }
-
-    // SVG simplifié en exemple
-    const svgCode = `
+    // Injecter le SVG
+    document.getElementById("svgChartContainer").innerHTML = `
       <svg width="300" height="100" xmlns="http://www.w3.org/2000/svg">
         <polyline fill="none" stroke="#2ecc71" stroke-width="3"
           points="0,80 60,60 120,40 180,30 240,25" />
@@ -154,7 +175,6 @@
         <text x="240" y="95" font-size="12">Jour 5</text>
       </svg>
     `;
-    document.getElementById("svgChartContainer").innerHTML = svgCode;
   </script>
 </body>
 </html>
