@@ -1,540 +1,1146 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>D2B1 - Système Rotatif</title>
-  <style>
-    body { font-family: Arial; background: #eef2f7; margin: 0; padding: 20px; }
-    h1 { text-align: center; }
-    .admin-container { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; }
-    .admin-box, .superviseur-section {
-      background: white; padding: 20px; margin: 10px; border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 48%; min-width: 300px;
-    }
-    .superviseur-card, .leader-card {
-      border: 1px solid #ccc; padding: 15px; margin-top: 15px; border-radius: 8px;
-      background-color: #f9f9f9;
-    }
-    .leader-card { background: #f0fff0; }
-    .btn {
-      padding: 8px 12px; margin: 5px; cursor: pointer;
-      border: none; border-radius: 5px;
-    }
-    .btn-blue { background: #3498db; color: white; }
-    .btn-red { background: #e74c3c; color: white; }
-    .btn-green { background: #2ecc71; color: white; }
-    .btn-yellow { background: #f1c40f; color: black; }
-    .btn-orange { background: #e67e22; color: white; }
-    input[type="text"] { width: 90%; padding: 8px; margin: 5px 0; }
-    .bold-center { text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 10px; }
-    #svgChartContainer { border:1px solid #ccc; padding:10px; margin-top:20px; }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dream2Build1 - Authentication & Payment</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f1f1f1; }
+        h1, h2 { text-align: center; color: #007BFF; }
+        .container, .panel, .form-section {
+            max-width: 900px; margin: auto; background: white; padding: 20px;
+            border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input, select, textarea {
+            width: 100%; padding: 10px; margin-top: 5px; margin-bottom: 15px;
+            border: 1px solid #ccc; border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #28a745; color: white; border: none; padding: 10px 20px;
+            font-size: 16px; border-radius: 5px; cursor: pointer;
+        }
+        button:hover { background-color: #218838; }
+        .hidden { display: none; }
+        .logout-btn button { background-color: #dc3545; }
+        .error-msg { color: red; font-weight: bold; }
+        .success-msg { color: green; font-weight: bold; }
+
+        /* Specific styles for the main platform content */
+        #mainPlatform {
+            border: 1px dashed #007BFF;
+            padding: 30px;
+            text-align: center;
+            font-size: 1.2em;
+            color: #007BFF;
+        }
+        .paiement-etapes {
+            display: none; /* Hidden by default, shown by JS */
+            background: #fff3cd;
+            padding: 10px; border-left: 5px solid #ffc107; margin-bottom: 20px;
+        }
+        .paiement-etapes .hidden {
+            display: none;
+        }
+        .paiement-etapes div {
+            margin-top: 10px;
+        }
+        .paiement-submit-btn {
+            background-color: #007BFF; /* Blue for payment */
+        }
+        .paiement-submit-btn:hover {
+            background-color: #0056b3;
+        }
+        #pendingPaymentsList li {
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        #pendingPaymentsList li button {
+            padding: 5px 10px;
+            font-size: 0.9em;
+        }
+        /* New styles for Rotation Management */
+        .rotation-section {
+            background: #e9f7ef;
+            border: 1px solid #d4edda;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+        }
+        .rotation-section label {
+            width: auto;
+            margin-right: 10px;
+            display: inline-block;
+        }
+        .rotation-section input {
+            width: calc(50% - 70px); /* Adjust width to fit with label */
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .rotation-section button {
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        #rotationParticipantsList {
+            list-style-type: decimal;
+            padding-left: 20px;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px dashed #28a745;
+            padding-top: 10px;
+            padding-bottom: 10px;
+            border-radius: 5px;
+        }
+        #rotationParticipantsList li {
+            padding: 5px 0;
+            border-bottom: 1px dotted #ccc;
+        }
+        #rotationParticipantsList li:last-child {
+            border-bottom: none;
+        }
+        .current-recipient {
+            background-color: #d4edda;
+            font-weight: bold;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        /* CEO Rotation History Table */
+        #ceoRotationHistoryTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        #ceoRotationHistoryTable th,
+        #ceoRotationHistoryTable td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        #ceoRotationHistoryTable th {
+            background-color: #007BFF;
+            color: white;
+        }
+        #ceoRotationHistoryTable tbody tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        #noRotationHistory {
+            font-style: italic;
+            color: #777;
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        /* Styles for User Messages list */
+        #userMessagesList li {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        #userMessagesList li.unread {
+            background-color: #fffde7; /* Light yellow for unread */
+            border-color: #ffe082;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-  <h1>D2B1 - Système Rotatif</h1>
 
-  <div class="admin-container">
-    <!-- Boîte Admin Principal -->
-    <div class="admin-box">
-      <div class="bold-center">👑 Admin Principal</div>
-      <p>Nom : Admin Master</p>
-      <p>Email : admin@d2b1.com</p>
+<h1>Dream2Build1 - Authentication & Payment System</h1>
 
-      <!-- Graphique SVG -->
-      <h3>📊 Évolution des gains</h3>
-      <div id="svgChartContainer">Chargement du graphique...</div>
+<div class="form-section" id="signUpPanel">
+    <h2>📝 Sign Up for Access</h2>
+    <form id="signUpForm">
+        <label for="fullName">Full Name:</label>
+        <input type="text" id="fullName" name="fullName" placeholder="Enter your full name" required>
 
-      <!-- Export -->
-      <button class="btn btn-green" onclick="exporterHistorique()">📤 Exporter Historique Excel</button>
+        <label for="phoneNumber">Phone Number:</label>
+        <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="e.g., +150912345678" required>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" placeholder="Enter your email" required>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" placeholder="Create your password" required>
+
+        <label for="confirmPassword">Confirm Password:</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Re-enter your password" required>
+
+        <button type="submit">Sign Up</button>
+        <p id="signUpMsg" class="hidden"></p>
+    </form>
+    <p style="text-align: center; margin-top: 15px;">Already have an account? <a href="#" onclick="showLogin()">Login here</a></p>
+</div>
+
+<div class="form-section hidden" id="loginPanel">
+    <h2>🔐 Log In to Your Account</h2>
+    <form id="loginForm">
+        <label for="loginEmail">Email:</label>
+        <input type="email" id="loginEmail" name="loginEmail" placeholder="Enter your email" required>
+
+        <label for="loginPassword">Password:</label>
+        <input type="password" id="loginPassword" name="loginPassword" placeholder="Enter your password" required>
+
+        <button type="submit">Log In</button>
+        <p id="loginMsg" class="hidden"></p>
+    </form>
+    <p style="text-align: center; margin-top: 15px;">Don't have an account? <a href="#" onclick="showSignUp()">Sign Up here</a></p>
+    <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="showContactAdmin()">Contact Support</a></p>
+    <p style="text-align: center; margin-top: 20px;">
+        <button style="background-color: #6c757d;" onclick="showAdminLoginRegister()">Admin / Leader Access</button>
+    </p>
+</div>
+
+<div class="panel hidden" id="verificationMessagePanel">
+    <h2>📧 Verify Your Email</h2>
+    <p>A verification message has been simulated for <strong id="verificationEmailDisplay"></strong>. In a real system, you'd receive an email to verify your account.</p>
+    <p>For this demo, your account is automatically considered verified.</p>
+    <button onclick="showLogin()">Go to Login (After Verification)</button>
+</div>
+
+<div class="panel hidden" id="paymentPanel">
+    <h2>💳 Complete Your Payment</h2>
+    <p>Welcome, <span id="paymentUserName"></span>! To access the full platform, please complete your payment.</p>
+    <form id="paymentForm">
+        <label for="paymentMethod">Choose Payment Method:</label>
+        <select id="paymentMethod" name="paymentMethod" onchange="showPaymentInstructions(this.value)" required>
+            <option value="">-- Select Payment Method --</option>
+            <option value="cash">Cash</option>
+            <option value="mastercard">Mastercard / Debit Card</option>
+            <option value="paypal">PayPal</option>
+            <option value="moncash">MonCash</option>
+            <option value="natcash">NatCash</option>
+        </select>
+
+        <div class="paiement-etapes" id="paymentInstructions">
+            <div id="cashInfo" class="hidden">
+                <p><strong>Cash:</strong> A team leader will contact you to validate your payment.</p>
+                <p>Once validated, your account will be fully activated. Click "Submit Payment Info" below to confirm your intent to pay by cash.</p>
+            </div>
+            <div id="mastercardInfo" class="hidden">
+                <p><strong>Mastercard / Debit Card:</strong> (Simulated payment)</p>
+                <label>Card Number (16 digits):</label>
+                <input type="text" id="cardNumber" maxlength="16" pattern="\d{16}" placeholder="1234 5678 9012 3456">
+                <label>Expiration Date (MM/YY):</label>
+                <input type="text" id="cardExpiry" maxlength="5" pattern="\d{2}/\d{2}" placeholder="MM/YY">
+                <label>CVC:</label>
+                <input type="text" id="cardCVC" maxlength="4" pattern="\d{3,4}" placeholder="123">
+                <label>Name on Card:</label>
+                <input type="text" id="cardName" placeholder="Name as on card">
+            </div>
+            <div id="paypalInfo" class="hidden">
+                <p><strong>PayPal:</strong> (Simulated payment)</p>
+                <p>In a real system, you would be redirected to PayPal. For this demo, simply submit.</p>
+                <p>Use this PayPal email to pay: <strong>dream2build@gmail.com</strong></p>
+            </div>
+            <div id="moncashInfo" class="hidden">
+                <p><strong>MonCash:</strong> (Simulated payment)</p>
+                <p>Send payment to <strong>+509 43260012</strong> (Name: Emmanuel Jean Frantz JEAMBAS)</p>
+            </div>
+            <div id="natcashInfo" class="hidden">
+                <p><strong>NatCash:</strong> (Simulated payment)</p>
+                <p>Send payment to <strong>+509 43260012</strong> (Name: Emmanuel Jean Frantz JEAMBAS)</p>
+            </div>
+        </div>
+        <button type="submit" class="paiement-submit-btn">Submit Payment Info</button>
+        <p id="paymentMsg" class="hidden"></p>
+    </form>
+    <div class="logout-btn">
+        <button onclick="logoutUser()">Log Out</button>
+    </div>
+</div>
+
+
+<div class="panel hidden" id="mainPlatformPanel">
+    <h2>Bienvenue sur Dream2Build1, <span id="loggedInUserName"></span>!</h2>
+    <div id="mainPlatform">
+        <p>This is your main platform content, accessible only after successful login and payment.</p>
+        <p>Here you can explore all features, except the administration area.</p>
+        <p>🚀 Ready to build your dreams!</p>
+    </div>
+    <div class="logout-btn">
+        <button onclick="logoutUser()">Log Out</button>
+    </div>
+</div>
+
+<div class="form-section hidden" id="contactAdminPanel">
+    <h2>📧 Contact Support</h2>
+    <p>Have a question or an issue? Send us a message!</p>
+    <form id="contactAdminForm">
+        <label for="contactEmail">Your Email:</label>
+        <input type="email" id="contactEmail" name="contactEmail" placeholder="Enter your email" required>
+
+        <label for="contactSubject">Subject:</label>
+        <input type="text" id="contactSubject" name="contactSubject" placeholder="e.g., Payment issue, Account problem" required>
+
+        <label for="contactMessage">Message:</label>
+        <textarea id="contactMessage" name="contactMessage" rows="5" placeholder="Type your message here..." required></textarea>
+
+        <button type="submit">Send Message</button>
+        <p id="contactAdminMsg" class="hidden"></p>
+    </form>
+    <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="showLogin()">Back to Login</a></p>
+</div>
+
+<div class="form-section hidden" id="leaderRegisterPanel">
+    <h2>👥 Team Leader Registration (Admin Only)</h2>
+    <label for="leaderName">Full Name:</label>
+    <input type="text" id="leaderName" placeholder="Enter full name">
+
+    <label for="leaderEmailReg">Email:</label>
+    <input type="email" id="leaderEmailReg" placeholder="Enter email">
+
+    <label for="leaderPass1">Create Password:</label>
+    <input type="password" id="leaderPass1" placeholder="Create password">
+
+    <label for="leaderPass2">Confirm Password:</label>
+    <input type="password" id="leaderPass2" placeholder="Confirm password">
+
+    <button onclick="registerLeader()">Register as Team Leader</button>
+    <p id="leaderRegisterMsg"></p>
+</div>
+
+<div class="form-section hidden" id="leaderLoginPanel">
+    <h2>🔐 Team Leader Login (Admin Only)</h2>
+    <form id="leaderLoginForm">
+        <label for="loginLeaderEmail">Email:</label>
+        <input type="email" id="loginLeaderEmail" name="loginLeaderEmail" placeholder="Enter email" required>
+
+        <label for="loginLeaderPass">Password:</label>
+        <input type="password" id="loginLeaderPass" name="loginLeaderPass" placeholder="Enter password" required>
+
+        <button type="submit">Login</button>
+        <p id="leaderLoginMsg"></p>
+    </form>
+    <p style="text-align: center; margin-top: 20px;">
+        <button style="background-color: #6c757d;" onclick="showCEOLogin()">Login as CEO</button>
+    </p>
+</div>
+
+<div class="form-section hidden" id="ceoLoginPanel">
+    <h2>👑 CEO Login</h2>
+    <form id="ceoLoginForm">
+        <label for="ceoLoginEmail">Email:</label>
+        <input type="email" id="ceoLoginEmail" name="ceoLoginEmail" placeholder="Enter CEO email" required>
+
+        <label for="ceoLoginPassword">Password:</label>
+        <input type="password" id="ceoLoginPassword" name="ceoLoginPassword" placeholder="Enter CEO password" required>
+
+        <button type="submit">Log In as CEO</button>
+        <p id="ceoLoginMsg" class="hidden"></p>
+    </form>
+    <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="showAdminLoginRegister()">Back to Admin/Leader Login</a></p>
+</div>
+
+
+<div id="leaderPanel" class="panel hidden">
+    <h2>🧑‍🤝‍🧑 Team Leader Dashboard</h2>
+    <p>Welcome, <span id="leaderNameDisplay"></span>!</p>
+    <div class="logout-btn">
+        <button onclick="logoutLeader()">Logout</button>
     </div>
 
-    <!-- Section des Superviseurs -->
-    <div class="superviseur-section">
-      <div class="bold-center">📌 Superviseurs & Leaders</div>
-      <button onclick="ajouterSuperviseur()" class="btn btn-blue">➕ Ajouter Superviseur</button>
-      <div id="superviseurContainer"></div>
-    </div>
-  </div>
+    <hr>
+    <h3>💸 Pending Payments:</h3>
+    <ul id="pendingPaymentsList">
+        </ul>
+    <p id="noPendingPayments" style="font-style: italic;">No pending payments.</p>
 
-  <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby44bVHJV3oXXZ7OK7vl5NuOHQdiJDmjKvSve1GfZ-We3tG2ANyAV6X5l9jSR4ls8x0/exec";
+    <hr>
+    <h3>✉️ User Messages: <span id="unreadMessageCount">(0 unread)</span></h3>
+    <ul id="userMessagesList">
+        </ul>
+    <p id="noUserMessages" style="font-style: italic;">No new messages.</p>
 
-    // Fonction pour envoyer les données à Google Sheets
-    function envoyerVersGoogleSheets(donnees) {
-      fetch(SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify(donnees),
-        headers: { "Content-Type": "application/json" },
-      }).then((res) => res.text())
-        .then((data) => console.log("✅ Enregistrement réussi :", data))
-        .catch((err) => console.error("❌ Erreur :", err));
-    }
+    <hr>
+    <div class="rotation-section">
+        <h3>🔄 Rotation Management</h3>
+        <p>Current Rotation Day: <strong id="currentRotationDay">0</strong></p>
+        <label for="dailyInvest">Daily Investment ($):</label>
+        <input type="number" id="dailyInvest" value="100" min="0" step="0.01">
 
-    function demandeDeconnexion(nomLeader, email, superviseur) {
-      const data = {
-        nom: nomLeader, email, telephone: "", nif: "",
-        role: "Team Leader", typeDemande: "Demande de déconnexion",
-        superviseur, participantMontant: "", participantGain: "", messageErreur: ""
-      };
-      envoyerVersGoogleSheets(data);
-    }
+        <label for="dailyGain">Daily Gain ($):</label>
+        <input type="number" id="dailyGain" value="1000" min="0" step="0.01">
 
-    function ajouterParticipant(nom, montant, gain, email = "", superviseur = "") {
-      const data = {
-        nom, email, telephone: "", nif: "",
-        role: "Participant", typeDemande: "Ajout participant",
-        superviseur, participantMontant: montant, participantGain: gain, messageErreur: ""
-      };
-      envoyerVersGoogleSheets(data);
-    }
+        <button onclick="saveRotationSettings()">Update Settings</button>
+        <p id="rotationSettingsMsg" class="hidden"></p>
 
-    function rapporterErreur(nomTL, email, messageErreur, superviseur) {
-      const data = {
-        nom: nomTL, email, telephone: "", nif: "",
-        role: "Team Leader", typeDemande: "Erreur",
-        superviseur, participantMontant: "", participantGain: "", messageErreur
-      };
-      envoyerVersGoogleSheets(data);
-    }
+        <hr>
+        <h4>Participants in Rotation:</h4>
+        <select id="availableMembersSelect" style="width: 70%; display: inline-block; margin-right: 10px;">
+            <option value="">-- Select Paid Member --</option>
+            </select>
+        <button style="background-color: #007BFF; width: auto; padding: 10px 15px; margin-right: 0;" onclick="addParticipantToRotation()">Add Participant</button>
+        <p id="addParticipantMsg" class="hidden"></p>
 
-    function exporterHistorique() {
-      alert("📤 Export depuis Google Sheets à venir — à activer dans Apps Script !");
-    }
+        <ul id="rotationParticipantsList">
+            </ul>
+        <p id="noActiveParticipants" style="font-style: italic;">No participants in rotation.</p>
 
-    function enregistrerAction(nom, email, superviseur, action) {
-      const data = {
-        type: "historique", nom, email, superviseur,
-        action, timestamp: new Date().toISOString()
-      };
-      envoyerVersGoogleSheets(data);
-    }
-
-    function ajouterSuperviseur() {
-      const id = "sup_" + Date.now();
-      const container = document.getElementById("superviseurContainer");
-      const card = document.createElement("div");
-      card.className = "superviseur-card";
-      card.innerHTML = `
-        <input type="text" placeholder="Nom du Superviseur" id="${id}_nom" />
-        <input type="text" placeholder="Email" id="${id}_email" />
-        <div class="bold-center">🧑‍💼 Superviseur</div>
-        <button class="btn btn-green" onclick="ajouterLeader('${id}')">👤 Ajouter Team Leader</button>
-        <button class="btn btn-red" onclick="this.parentElement.remove()">🗑️ Enlever Superviseur</button>
-        <div id="${id}_leaders"></div>
-      `;
-      container.appendChild(card);
-    }
-
-    function ajouterLeader(superviseurId) {
-      const supNom = document.getElementById(`${superviseurId}_nom`).value || "Inconnu";
-      const supEmail = document.getElementById(`${superviseurId}_email`).value || "Inconnu";
-      const leadersContainer = document.getElementById(`${superviseurId}_leaders`);
-      const leaderId = "leader_" + Date.now();
-      const card = document.createElement("div");
-      card.className = "leader-card";
-      card.innerHTML = `
-        <input type="text" placeholder="Nom du Leader" id="${leaderId}_nom" />
-        <input type="text" placeholder="Email" id="${leaderId}_email" />
-        <div class="bold-center">👥 Team Leader</div>
-        <button class="btn btn-orange" onclick="enregistrerAction(
-          document.getElementById('${leaderId}_nom').value,
-          document.getElementById('${leaderId}_email').value,
-          '${supNom}', 'Demande Réinitialisation')">🔁 Réinitialisation</button>
-
-        <button class="btn btn-yellow" onclick="enregistrerAction(
-          document.getElementById('${leaderId}_nom').value,
-          document.getElementById('${leaderId}_email').value,
-          '${supNom}', 'Demande Déconnexion')">🚪 Déconnexion</button>
-
-        <button class="btn btn-green" onclick="enregistrerAction(
-          document.getElementById('${leaderId}_nom').value,
-          document.getElementById('${leaderId}_email').value,
-          '${supNom}', 'Demande Reconnexion')">🔓 Reconnexion</button>
-
-        <button class="btn btn-blue" onclick="this.innerText='✔️ Approuvé'; this.disabled=true">✅ Approuver</button>
-
-        <button class="btn btn-red" onclick="this.parentElement.remove()">🗑️ Enlever TL</button>
-      `;
-      leadersContainer.appendChild(card);
-    }
-
-    // Injecter le SVG
-    document.getElementById("svgChartContaine<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <title>D2B1 - Système Rotatif</title>
-  <style>
-    body { font-family: Arial; background: #eef2f7; margin: 0; padding: 20px; }
-    h1 { text-align: center; }
-    .admin-container { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; }
-    .admin-box, .superviseur-section {
-      background: white; padding: 20px; margin: 10px; border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 48%; min-width: 300px;
-    }
-    .superviseur-card, .leader-card {
-      border: 1px solid #ccc; padding: 15px; margin-top: 15px; border-radius: 8px;
-      background-color: #f9f9f9;
-    }
-    .leader-card { background: #f0fff0; }
-    .btn {
-      padding: 8px 12px; margin: 5px; cursor: pointer;
-      border: none; border-radius: 5px;
-    }
-    .btn-blue { background: #3498db; color: white; }
-    .btn-red { background: #e74c3c; color: white; }
-    .btn-green { background: #2ecc71; color: white; }
-    .btn-yellow { background: #f1c40f; color: black; }
-    .btn-orange { background: #e67e22; color: white; }
-    input[type="text"] { width: 90%; padding: 8px; margin: 5px 0; }
-    .bold-center { text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 10px; }
-    #svgChartContainer { border:1px solid #ccc; padding:10px; margin-top:20px; }
-  </style>
-</head>
-<body>
-  <h1>D2B1 - Système Rotatif</h1>
-
-  <div class="admin-container">
-    <!-- Boîte Admin Principal -->
-    <div class="admin-box">
-      <div class="bold-center">👑 Admin Principal</div>
-      <p>Nom : Admin Master</p>
-      <p>Email : admin@d2b1.com</p>
-
-      <!-- Graphique SVG -->
-      <h3>📊 Évolution des gains</h3>
-      <div id="svgChartContainer">Chargement du graphique...</div>
-
-      <!-- Export -->
-      <button class="btn btn-green" onclick="exporterHistorique()">📤 Exporter Historique Excel</button>
+        <button style="background-color: #ffc107;" onclick="nextParticipant()">Next Participant (Rotate)</button>
+        <p id="rotationStatusMsg" class="hidden"></p>
     </div>
 
-    <!-- Section des Superviseurs -->
-    <div class="superviseur-section">
-      <div class="bold-center">📌 Superviseurs & Leaders</div>
-      <button onclick="ajouterSuperviseur()" class="btn btn-blue">➕ Ajouter Superviseur</button>
-      <div id="superviseurContainer"></div>
-    </div>
-  </div>
+</div>
 
-  <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby44bVHJV3oXXZ7OK7vl5NuOHQdiJDmjKvSve1GfZ-We3tG2ANyAV6X5l9jSR4ls8x0/exec";
-
-    // Fonction pour envoyer les données à Google Sheets
-    function envoyerVersGoogleSheets(donnees) {
-      fetch(SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify(donnees),
-        headers: { "Content-Type": "application/json" },
-      }).then((res) => res.text())
-        .then((data) => console.log("✅ Enregistrement réussi :", data))
-        .catch((err) => console.error("❌ Erreur :", err));
-    }
-
-    function demandeDeconnexion(nomLeader, email, superviseur) {
-      const data = {
-        nom: nomLeader, email, telephone: "", nif: "",
-        role: "Team Leader", typeDemande: "Demande de déconnexion",
-        superviseur, participantMontant: "", participantGain: "", messageErreur: ""
-      };
-      envoyerVersGoogleSheets(data);
-    }
-
-    function ajouterParticipant(nom, montant, gain, email = "", superviseur = "") {
-      const data = {
-        nom, email, telephone: "", nif: "",
-        role: "Participant", typeDemande: "Ajout participant",
-        superviseur, participantMontant: montant, participantGain: gain, messageErreur: ""
-      };
-      envoyerVersGoogleSheets(data);
-    }
-
-    function rapporterErreur(nomTL, email, messageErreur, superviseur) {
-      const data = {
-        nom: nomTL, email, telephone: "", nif: "",
-        role: "Team Leader", typeDemande: "Erreur",
-        superviseur, participantMontant: "", participantGain: "", messageErreur
-      };
-      envoyerVersGoogleSheets(data);
-    }
-
-    function exporterHistorique() {
-      alert("📤 Export depuis Google Sheets à venir — à activer dans Apps Script !");
-    }
-
-    function enregistrerAction(nom, email, superviseur, action) {
-      const data = {
-        type: "historique", nom, email, superviseur,
-        action, timestamp: new Date().toISOString()
-      };
-      envoyerVersGoogleSheets(data);
-    }
-
-    function ajouterSuperviseur() {
-      const id = "sup_" + Date.now();
-      const container = document.getElementById("superviseurContainer");
-      const card = document.createElement("div");
-      card.className = "superviseur-card";
-      card.innerHTML = `
-        <input type="text" placeholder="Nom du Superviseur" id="${id}_nom" />
-        <input type="text" placeholder="Email" id="${id}_email" />
-        <div class="bold-center">🧑‍💼 Superviseur</div>
-        <button class="btn btn-green" onclick="ajouterLeader('${id}')">👤 Ajouter Team Leader</button>
-        <button class="btn btn-red" onclick="this.parentElement.remove()">🗑️ Enlever Superviseur</button>
-        <div id="${id}_leaders"></div>
-      `;
-      container.appendChild(card);
-    }
-
-    function ajouterLeader(superviseurId) {
-      const supNom = document.getElementById(`${superviseurId}_nom`).value || "Inconnu";
-      const supEmail = document.getElementById(`${superviseurId}_email`).value || "Inconnu";
-      const leadersContainer = document.getElementById(`${superviseurId}_leaders`);
-      const leaderId = "leader_" + Date.now();
-      const card = document.createElement("div");
-      card.className = "leader-card";
-      card.innerHTML = `
-        <input type="text" placeholder="Nom du Leader" id="${leaderId}_nom" />
-        <input type="text" placeholder="Email" id="${leaderId}_email" />
-        <div class="bold-center">👥 Team Leader</div>
-        <button class="btn btn-orange" onclick="enregistrerAction(
-          document.getElementById('${leaderId}_nom').value,
-          document.getElementById('${leaderId}_email').value,
-          '${supNom}', 'Demande Réinitialisation')">🔁 Réinitialisation</button>
-
-        <button class="btn btn-yellow" onclick="enregistrerAction(
-          document.getElementById('${leaderId}_nom').value,
-          document.getElementById('${leaderId}_email').value,
-          '${supNom}', 'Demande Déconnexion')">🚪 Déconnexion</button>
-
-        <button class="btn btn-green" onclick="enregistrerAction(
-          document.getElementById('${leaderId}_nom').value,
-          document.getElementById('${leaderId}_email').value,
-          '${supNom}', 'Demande Reconnexion')">🔓 Reconnexion</button>
-
-        <button class="btn btn-blue" onclick="this.innerText='✔️ Approuvé'; this.disabled=true">✅ Approuver</button>
-
-        <button class="btn btn-red" onclick="this.parentElement.remove()">🗑️ Enlever TL</button>
-      `;
-      leadersContainer.appendChild(card);
-    }
-
-    // Injecter le SVG
-    document.getElementById("svgChartContainer").innerHTML = `
-      <svg width="300" height="100" xmlns="http://www.w3.org/2000/svg">
-        <polyline fill="none" stroke="#2ecc71" stroke-width="3"
-          points="0,80 60,60 120,40 180,30 240,25" />
-        <circle cx="0" cy="80" r="4" fill="#2ecc71"/>
-        <circle cx="60" cy="60" r="4" fill="#2ecc71"/>
-        <circle cx="120" cy="40" r="4" fill="#2ecc71"/>
-        <circle cx="180" cy="30" r="4" fill="#2ecc71"/>
-        <circle cx="240" cy="25" r="4" fill="#2ecc71"/>
-        <text x="0" y="95" font-size="12">Jour 1</text>
-        <text x="60" y="95" font-size="12">Jour 2</text>
-        <text x="120" y="95" font-size="12">Jour 3</text>
-        <text x="180" y="95" font-size="12">Jour 4</text>
-        <text x="240" y="95" font-size="12">Jour 5</text>
-      </svg>
-    `;
-  </script>
-</body>
-</html>
-r").innerHTML = `
-      <svg width="300" height="100" xmlns="http://www.w3.org/2000/svg">
-        <polyline fill="none" stroke="#2ecc71" stroke-width="3"
-          points="0,80 60,60 120,40 180,30 240,25" />
-        <circle cx="0" cy="80" r="4" fill="#2ecc7<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <title>D2B1 - Système Rotatif</title>
-  <style>
-    body { font-family: Arial; background: #eef2f7; margin: 0; padding: 20px; }
-    h1 { text-align: center; }
-    .admin-container { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; }
-    .admin-box, .superviseur-section {
-      background: white; padding: 20px; margin: 10px; border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 48%; min-width: 300px;
-    }
-    .superviseur-card, .leader-card {
-      border: 1px solid #ccc; padding: 15px; margin-top: 15px; border-radius: 8px;
-      background-color: #f9f9f9;
-    }
-    .leader-card { background: #f0fff0; }
-    .btn {
-      padding: 8px 12px; margin: 5px; cursor: pointer;
-      border: none; border-radius: 5px;
-    }
-    .btn-blue { background: #3498db; color: white; }
-    .btn-red { background: #e74c3c; color: white; }
-    .btn-green { background: #2ecc71; color: white; }
-    .btn-yellow { background: #f1c40f; color: black; }
-    .btn-orange { background: #e67e22; color: white; }
-    input[type="text"] { width: 90%; padding: 8px; margin: 5px 0; }
-    .bold-center { text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 10px; }
-    #svgChartContainer { border:1px solid #ccc; padding:10px; margin-top:20px; }
-  </style>
-</head>
-<body>
-  <h1>D2B1 - Système Rotatif</h1>
-
-  <div class="admin-container">
-    <!-- Boîte Admin Principal -->
-    <div class="admin-box">
-      <div class="bold-center">👑 Admin Principal</div>
-      <p>Nom : Admin Master</p>
-      <p>Email : admin@d2b1.com</p>
-
-      <!-- Graphique SVG -->
-      <h3>📊 Évolution des gains</h3>
-      <div id="svgChartContainer">Chargement du graphique...</div>
-
-      <!-- Export -->
-      <button class="btn btn-green" onclick="exporterHistorique()">📤 Exporter Historique Excel</button>
+<div id="ceoPanel" class="panel hidden">
+    <h2>👑 CEO Dashboard</h2>
+    <p>Welcome, CEO!</p>
+    <div class="logout-btn">
+        <button onclick="logoutCEO()">Logout CEO</button>
     </div>
 
-    <!-- Section des Superviseurs -->
-    <div class="superviseur-section">
-      <div class="bold-center">📌 Superviseurs & Leaders</div>
-      <button onclick="ajouterSuperviseur()" class="btn btn-blue">➕ Ajouter Superviseur</button>
-      <div id="superviseurContainer"></div>
-    </div>
-  </div>
+    <hr>
+    <h3>📈 Rotation History (Last 25 Days):</h3>
+    <table id="ceoRotationHistoryTable">
+        <thead>
+            <tr>
+                <th>Day</th>
+                <th>Recipient</th>
+                <th>Invest ($)</th>
+                <th>Gain ($)</th>
+                <th>Date/Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            </tbody>
+    </table>
+    <p id="noRotationHistory" class="hidden">No rotation history available yet.</p>
 
-  <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby44bVHJV3oXXZ7OK7vl5NuOHQdiJDmjKvSve1GfZ-We3tG2ANyAV6X5l9jSR4ls8x0/exec";
+    <button style="margin-top: 20px;" onclick="calculRotation()">Generate Comprehensive Report (Future Feature)</button>
+    <p id="ceoReportMsg" class="hidden" style="margin-top: 10px;"></p>
+</div>
 
-    // Fonction pour envoyer les données à Google Sheets
-    function envoyerVersGoogleSheets(donnees) {
-      fetch(SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify(donnees),
-        headers: { "Content-Type": "application/json" },
-      }).then((res) => res.text())
-        .then((data) => console.log("✅ Enregistrement réussi :", data))
-        .catch((err) => console.error("❌ Erreur :", err));
+<script>
+    // --- Helper Functions to Toggle Panels ---
+    function hideAllPanels() {
+        document.getElementById('signUpPanel').classList.add('hidden');
+        document.getElementById('loginPanel').classList.add('hidden');
+        document.getElementById('verificationMessagePanel').classList.add('hidden');
+        document.getElementById('paymentPanel').classList.add('hidden');
+        document.getElementById('mainPlatformPanel').classList.add('hidden');
+        document.getElementById('leaderRegisterPanel').classList.add('hidden');
+        document.getElementById('leaderLoginPanel').classList.add('hidden');
+        document.getElementById('ceoLoginPanel').classList.add('hidden');
+        document.getElementById('leaderPanel').classList.add('hidden');
+        document.getElementById('ceoPanel').classList.add('hidden');
+        document.getElementById('contactAdminPanel').classList.add('hidden');
     }
 
-    function demandeDeconnexion(nomLeader, email, superviseur) {
-      const data = {
-        nom: nomLeader, email, telephone: "", nif: "",
-        role: "Team Leader", typeDemande: "Demande de déconnexion",
-        superviseur, participantMontant: "", participantGain: "", messageErreur: ""
-      };
-      envoyerVersGoogleSheets(data);
+    function showSignUp() {
+        hideAllPanels();
+        document.getElementById('signUpPanel').classList.remove('hidden');
     }
 
-    function ajouterParticipant(nom, montant, gain, email = "", superviseur = "") {
-      const data = {
-        nom, email, telephone: "", nif: "",
-        role: "Participant", typeDemande: "Ajout participant",
-        superviseur, participantMontant: montant, participantGain: gain, messageErreur: ""
-      };
-      envoyerVersGoogleSheets(data);
+    function showLogin() {
+        hideAllPanels();
+        document.getElementById('loginPanel').classList.remove('hidden');
     }
 
-    function rapporterErreur(nomTL, email, messageErreur, superviseur) {
-      const data = {
-        nom: nomTL, email, telephone: "", nif: "",
-        role: "Team Leader", typeDemande: "Erreur",
-        superviseur, participantMontant: "", participantGain: "", messageErreur
-      };
-      envoyerVersGoogleSheets(data);
+    function showVerificationMessage(email) {
+        hideAllPanels();
+        document.getElementById('verificationMessagePanel').classList.remove('hidden');
+        document.getElementById('verificationEmailDisplay').textContent = email;
     }
 
-    function exporterHistorique() {
-      alert("📤 Export depuis Google Sheets à venir — à activer dans Apps Script !");
+    function showPaymentPanel(userName, userEmail) {
+        hideAllPanels();
+        document.getElementById('paymentPanel').classList.remove('hidden');
+        document.getElementById('paymentUserName').textContent = userName;
+        document.getElementById('paymentPanel').dataset.currentUserEmail = userEmail;
     }
 
-    function enregistrerAction(nom, email, superviseur, action) {
-      const data = {
-        type: "historique", nom, email, superviseur,
-        action, timestamp: new Date().toISOString()
-      };
-      envoyerVersGoogleSheets(data);
+    function showMainPlatform(userName) {
+        hideAllPanels();
+        document.getElementById('mainPlatformPanel').classList.remove('hidden');
+        document.getElementById('loggedInUserName').textContent = userName;
     }
 
-    function ajouterSuperviseur() {
-      const id = "sup_" + Date.now();
-      const container = document.getElementById("superviseurContainer");
-      const card = document.createElement("div");
-      card.className = "superviseur-card";
-      card.innerHTML = `
-        <input type="text" placeholder="Nom du Superviseur" id="${id}_nom" />
-        <input type="text" placeholder="Email" id="${id}_email" />
-        <div class="bold-center">🧑‍💼 Superviseur</div>
-        <button class="btn btn-green" onclick="ajouterLeader('${id}')">👤 Ajouter Team Leader</button>
-        <button class="btn btn-red" onclick="this.parentElement.remove()">🗑️ Enlever Superviseur</button>
-        <div id="${id}_leaders"></div>
-      `;
-      container.appendChild(card);
+    function showAdminLoginRegister() {
+        hideAllPanels();
+        document.getElementById('leaderLoginPanel').classList.remove('hidden');
+        document.getElementById('leaderRegisterPanel').classList.remove('hidden');
     }
 
-    function ajouterLeader(superviseurId) {
-      const supNom = document.getElementById(`${superviseurId}_nom`).value || "Inconnu";
-      const supEmail = document.getElementById(`${superviseurId}_email`).value || "Inconnu";
-      const leadersContainer = document.getElementById(`${superviseurId}_leaders`);
-      const leaderId = "leader_" + Date.now();
-      const card = document.createElement("div");
-      card.className = "leader-card";
-      card.innerHTML = `
-        <input type="text" placeholder="Nom du Leader" id="${leaderId}_nom" />
-        <input type="text" placeholder="Email" id="${leaderId}_email" />
-        <div class="bold-center">👥 Team Leader</div>
-        <button class="btn btn-orange" onclick="enregistrerAction(
-          document.getElementById('${leaderId}_nom').value,
-          document.getElementById('${leaderId}_email').value,
-          '${supNom}', 'Demande Réinitialisation')">🔁 Réinitialisation</button>
-
-        <button class="btn btn-yellow" onclick="enregistrerAction(
-          document.getElementById('${leaderId}_nom').value,
-          document.getElementById('${leaderId}_email').value,
-          '${supNom}', 'Demande Déconnexion')">🚪 Déconnexion</button>
-
-        <button class="btn btn-green" onclick="enregistrerAction(
-          document.getElementById('${leaderId}_nom').value,
-          document.getElementById('${leaderId}_email').value,
-          '${supNom}', 'Demande Reconnexion')">🔓 Reconnexion</button>
-
-        <button class="btn btn-blue" onclick="this.innerText='✔️ Approuvé'; this.disabled=true">✅ Approuver</button>
-
-        <button class="btn btn-red" onclick="this.parentElement.remove()">🗑️ Enlever TL</button>
-      `;
-      leadersContainer.appendChild(card);
+    function showCEOLogin() {
+        hideAllPanels();
+        document.getElementById('ceoLoginPanel').classList.remove('hidden');
     }
 
-    // Injecter le SVG
-    document.getElementById("svgChartContainer").innerHTML = `
-      <svg width="300" height="100" xmlns="http://www.w3.org/2000/svg">
-        <polyline fill="none" stroke="#2ecc71" stroke-width="3"
-          points="0,80 60,60 120,40 180,30 240,25" />
-        <circle cx="0" cy="80" r="4" fill="#2ecc71"/>
-        <circle cx="60" cy="60" r="4" fill="#2ecc71"/>
-        <circle cx="120" cy="40" r="4" fill="#2ecc71"/>
-        <circle cx="180" cy="30" r="4" fill="#2ecc71"/>
-        <circle cx="240" cy="25" r="4" fill="#2ecc71"/>
-        <text x="0" y="95" font-size="12">Jour 1</text>
-        <text x="60" y="95" font-size="12">Jour 2</text>
-        <text x="120" y="95" font-size="12">Jour 3</text>
-        <text x="180" y="95" font-size="12">Jour 4</text>
-        <text x="240" y="95" font-size="12">Jour 5</text>
-      </svg>
-    `;
-  </script>
-</body>
-</html>
-1"/>
-        <circle cx="60" cy="60" r="4" fill="#2ecc71"/>
-        <circle cx="120" cy="40" r="4" fill="#2ecc71"/>
-        <circle cx="180" cy="30" r="4" fill="#2ecc71"/>
-        <circle cx="240" cy="25" r="4" fill="#2ecc71"/>
-        <text x="0" y="95" font-size="12">Jour 1</text>
-        <text x="60" y="95" font-size="12">Jour 2</text>
-        <text x="120" y="95" font-size="12">Jour 3</text>
-        <text x="180" y="95" font-size="12">Jour 4</text>
-        <text x="240" y="95" font-size="12">Jour 5</text>
-      </svg>
-    `;
-  </script>
+    function showContactAdmin() {
+        hideAllPanels();
+        document.getElementById('contactAdminPanel').classList.remove('hidden');
+    }
+
+    // --- Data Storage (Client-Side Simulation) ---
+    const users = JSON.parse(localStorage.getItem('users')) || {};
+    let admins = JSON.parse(localStorage.getItem('admins')) || {};
+    const pendingPayments = JSON.parse(localStorage.getItem('pendingPayments')) || {};
+    let adminMessages = JSON.parse(localStorage.getItem('adminMessages')) || {};
+
+    let rotationSettings = JSON.parse(localStorage.getItem('rotationSettings')) || {
+        invest: 100,
+        gain: 1000,
+        currentDay: 0,
+        lastPaidMemberIndex: -1
+    };
+    let activeRotationMembers = JSON.parse(localStorage.getItem('activeRotationMembers')) || [];
+    let rotationHistory = JSON.parse(localStorage.getItem('rotationHistory')) || [];
+
+    // --- User Authentication (Sign Up & Login) ---
+
+    document.getElementById('signUpForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const fullName = document.getElementById('fullName').value.trim();
+        const phoneNumber = document.getElementById('phoneNumber').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        const msg = document.getElementById('signUpMsg');
+
+        msg.classList.add('hidden');
+
+        if (!fullName || !phoneNumber || !email || !password || !confirmPassword) {
+            msg.textContent = '❌ Please fill in all fields.';
+            msg.classList.remove('hidden', 'success-msg');
+            msg.classList.add('error-msg');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            msg.textContent = '❌ Passwords do not match.';
+            msg.classList.remove('hidden', 'success-msg');
+            msg.classList.add('error-msg');
+            return;
+        }
+
+        if (users[email]) {
+            msg.textContent = '❌ This email is already registered.';
+            msg.classList.remove('hidden', 'success-msg');
+            msg.classList.add('error-msg');
+            return;
+        }
+
+        users[email] = {
+            fullName: fullName,
+            phoneNumber: phoneNumber,
+            password: password,
+            verified: false,
+            paid: false
+        };
+        localStorage.setItem('users', JSON.stringify(users));
+
+        msg.textContent = '✅ Sign up successful! Your account is automatically verified for this demo. Please proceed to login.';
+        msg.classList.remove('hidden', 'error-msg');
+        msg.classList.add('success-msg');
+
+        setTimeout(() => {
+            users[email].verified = true;
+            localStorage.setItem('users', JSON.stringify(users));
+            showVerificationMessage(email);
+        }, 1000);
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        const msg = document.getElementById('loginMsg');
+
+        msg.classList.add('hidden');
+
+        const user = users[email];
+
+        if (!user) {
+            msg.textContent = '❌ No account found with this email.';
+            msg.classList.remove('hidden', 'success-msg');
+            msg.classList.add('error-msg');
+            return;
+        }
+
+        if (!user.verified) {
+            msg.textContent = '❌ Please verify your email first. (In a real system, you\'d check your inbox!)';
+            msg.classList.remove('hidden', 'success-msg');
+            msg.classList.add('error-msg');
+            return;
+        }
+
+        if (user.password !== password) {
+            msg.textContent = '❌ Incorrect password.';
+            msg.classList.remove('hidden', 'success-msg');
+            msg.classList.add('error-msg');
+            return;
+        }
+
+        localStorage.setItem('currentUser', JSON.stringify({ email: user.email, name: user.fullName, role: 'user' }));
+
+        if (user.paid) {
+            showMainPlatform(user.fullName);
+        } else {
+            showPaymentPanel(user.fullName, user.email);
+        }
+    });
+
+    function logoutUser() {
+        localStorage.removeItem('currentUser');
+        showLogin();
+    }
+
+    // --- Payment Logic ---
+    function showPaymentInstructions(value) {
+        const allDivs = ['cashInfo', 'mastercardInfo', 'paypalInfo', 'moncashInfo', 'natcashInfo'];
+        allDivs.forEach(id => document.getElementById(id).classList.add('hidden'));
+        document.getElementById('paymentInstructions').style.display = 'block';
+
+        if(value && allDivs.includes(value + 'Info')) {
+            document.getElementById(value + 'Info').classList.remove('hidden');
+        } else {
+            document.getElementById('paymentInstructions').style.display = 'none';
+        }
+    }
+
+    document.getElementById('paymentForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const paymentMethod = document.getElementById('paymentMethod').value;
+        const currentUserEmail = document.getElementById('paymentPanel').dataset.currentUserEmail;
+        const msg = document.getElementById('paymentMsg');
+        msg.classList.add('hidden');
+
+        if (!paymentMethod) {
+            msg.textContent = '❌ Please select a payment method.';
+            msg.classList.remove('hidden', 'success-msg');
+            msg.classList.add('error-msg');
+            return;
+        }
+
+        if (paymentMethod === 'cash') {
+            if (!pendingPayments[currentUserEmail]) {
+                const userName = users[currentUserEmail] ? users[currentUserEmail].fullName : 'Unknown User';
+
+                pendingPayments[currentUserEmail] = {
+                    email: currentUserEmail,
+                    name: userName,
+                    method: 'Cash',
+                    status: 'pending_leader_validation',
+                    timestamp: new Date().toLocaleString()
+                };
+                localStorage.setItem('pendingPayments', JSON.stringify(pendingPayments));
+                msg.textContent = '✅ Payment method submitted. A team leader will validate your cash payment soon.';
+                msg.classList.remove('hidden', 'error-msg');
+                msg.classList.add('success-msg');
+            } else {
+                msg.textContent = 'ℹ️ Your cash payment is already pending validation.';
+                msg.classList.remove('hidden', 'success-msg');
+                msg.classList.add('error-msg');
+            }
+        } else {
+            const user = users[currentUserEmail];
+            if (user) {
+                user.paid = true;
+                localStorage.setItem('users', JSON.stringify(users));
+                localStorage.setItem('currentUser', JSON.stringify({ email: user.email, name: user.fullName, role: 'user' }));
+                msg.textContent = '✅ Payment successful! Redirecting to platform...';
+                msg.classList.remove('hidden', 'error-msg');
+                msg.classList.add('success-msg');
+                setTimeout(() => showMainPlatform(user.fullName), 1500);
+            }
+        }
+    });
+
+
+    // --- User Message System ---
+    document.getElementById('contactAdminForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const email = document.getElementById('contactEmail').value.trim();
+        const subject = document.getElementById('contactSubject').value.trim();
+        const messageText = document.getElementById('contactMessage').value.trim();
+        const msg = document.getElementById('contactAdminMsg');
+
+        msg.classList.add('hidden');
+
+        if (!email || !subject || !messageText) {
+            msg.textContent = '❌ Please fill in all fields.';
+            msg.classList.remove('hidden', 'success-msg');
+            msg.classList.add('error-msg');
+            return;
+        }
+
+        const messageId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+        adminMessages[messageId] = {
+            id: messageId,
+            fromEmail: email,
+            subject: subject,
+            message: messageText,
+            timestamp: new Date().toLocaleString(),
+            status: 'unread'
+        };
+        localStorage.setItem('adminMessages', JSON.stringify(adminMessages));
+
+        msg.textContent = '✅ Your message has been sent to support!';
+        msg.classList.remove('hidden', 'error-msg');
+        msg.classList.add('success-msg');
+
+        document.getElementById('contactEmail').value = '';
+        document.getElementById('contactSubject').value = '';
+        document.getElementById('contactMessage').value = '';
+
+        setTimeout(() => msg.classList.add('hidden'), 3000);
+    });
+
+    // --- Admin (Team Leader / CEO) Logic ---
+
+    document.getElementById('leaderLoginForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        loginLeader();
+    });
+
+    function registerLeader() {
+        const name = document.getElementById('leaderName').value.trim();
+        const email = document.getElementById('leaderEmailReg').value.trim();
+        const pass1 = document.getElementById('leaderPass1').value;
+        const pass2 = document.getElementById('leaderPass2').value;
+        const msg = document.getElementById('leaderRegisterMsg');
+
+        if(!name || !email || !pass1 || !pass2) {
+            msg.textContent = '❌ Please fill all fields';
+            msg.className = 'error-msg';
+            return;
+        }
+        if(pass1 !== pass2) {
+            msg.textContent = '❌ Passwords do not match';
+            msg.className = 'error-msg';
+            return;
+        }
+        if (admins[email]) {
+            msg.textContent = '❌ This email is already registered as an admin.';
+            msg.className = 'error-msg';
+            return;
+        }
+
+        admins[email] = { name, email, password: pass1, role: 'leader' };
+        localStorage.setItem('admins', JSON.stringify(admins));
+
+        msg.textContent = '✅ Registration successful. You can now login as a Leader.';
+        msg.className = 'success-msg';
+
+        document.getElementById('leaderName').value = '';
+        document.getElementById('leaderEmailReg').value = '';
+        document.getElementById('leaderPass1').value = '';
+        document.getElementById('leaderPass2').value = '';
+    }
+
+    function loginLeader() {
+        const email = document.getElementById('loginLeaderEmail').value.trim();
+        const pass = document.getElementById('loginLeaderPass').value;
+        const msg = document.getElementById('leaderLoginMsg');
+        const stored = admins[email];
+
+        if(!stored || stored.role !== 'leader') {
+            msg.textContent = '❌ No leader account found with this email.';
+            msg.className = 'error-msg';
+            return;
+        }
+
+        if(stored.password !== pass) {
+            msg.textContent = '❌ Incorrect password.';
+            msg.className = 'error-msg';
+            return;
+        }
+
+        localStorage.setItem('currentAdmin', JSON.stringify({ email: stored.email, name: stored.name, role: stored.role }));
+        hideAllPanels();
+        document.getElementById('leaderPanel').classList.remove('hidden');
+        document.getElementById('leaderNameDisplay').textContent = stored.name;
+        loadPendingPayments();
+        loadRotationSettings();
+        loadAvailableMembersForRotation();
+        displayRotationParticipants();
+        loadUserMessages();
+    }
+
+    function logoutLeader() {
+        localStorage.removeItem('currentAdmin');
+        showLogin();
+    }
+
+    function loadPendingPayments() {
+        const list = document.getElementById('pendingPaymentsList');
+        list.innerHTML = '';
+        let hasPending = false;
+
+        for (const email in pendingPayments) {
+            const payment = pendingPayments[email];
+            if (payment.status === 'pending_leader_validation') {
+                hasPending = true;
+                const userDisplayName = payment.name || users[email]?.fullName || 'Unknown User';
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `
+                    <strong>${userDisplayName}</strong> (${payment.email}) - Method: ${payment.method} - Submitted: ${payment.timestamp}
+                    <div>
+                        <button style="background-color: #28a745;" onclick="validatePayment('${email}')">Validate</button>
+                        <button style="background-color: #dc3545; margin-left: 5px;" onclick="rejectPayment('${email}')">Reject</button>
+                    </div>
+                `;
+                list.appendChild(listItem);
+            }
+        }
+
+        document.getElementById('noPendingPayments').classList.toggle('hidden', hasPending);
+    }
+
+    function validatePayment(email) {
+        if (users[email]) {
+            users[email].paid = true;
+            localStorage.setItem('users', JSON.stringify(users));
+
+            delete pendingPayments[email];
+            localStorage.setItem('pendingPayments', JSON.stringify(pendingPayments));
+
+            // --- NEW LOGIC: Automatically add validated user to active rotation if not already there ---
+            if (!activeRotationMembers.includes(email)) {
+                activeRotationMembers.push(email);
+                localStorage.setItem('activeRotationMembers', JSON.stringify(activeRotationMembers));
+                alert(`Payment for ${users[email].fullName} (${email}) validated! User has been added to rotation and now has full access.`);
+            } else {
+                alert(`Payment for ${users[email].fullName} (${email}) validated! User already in rotation. User now has full access.`);
+            }
+            // --- END NEW LOGIC ---
+
+            loadPendingPayments();
+            loadAvailableMembersForRotation(); // This will refresh the dropdown (the user just added should no longer be in it)
+            displayRotationParticipants(); // This will update the list of participants shown on the dashboard
+        } else {
+            alert(`Error: User with email ${email} not found.`);
+        }
+    }
+
+    function rejectPayment(email) {
+        if (users[email]) {
+            delete pendingPayments[email];
+            localStorage.setItem('pendingPayments', JSON.stringify(pendingPayments));
+            alert(`Payment for ${users[email].fullName} (${email}) rejected. User needs to resubmit.`);
+            loadPendingPayments();
+        }
+    }
+
+    function loadUserMessages() {
+        const list = document.getElementById('userMessagesList');
+        list.innerHTML = '';
+        let unreadCount = 0;
+        let hasMessages = false;
+
+        const messagesArray = Object.values(adminMessages).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        messagesArray.forEach(message => {
+            hasMessages = true;
+            if (message.status === 'unread') {
+                unreadCount++;
+            }
+            const listItem = document.createElement('li');
+            listItem.classList.toggle('unread', message.status === 'unread');
+            listItem.innerHTML = `
+                <strong>From:</strong> ${message.fromEmail}<br>
+                <strong>Subject:</strong> ${message.subject}<br>
+                <strong>Message:</strong> ${message.message}<br>
+                <small><em>Sent: ${message.timestamp} - Status: ${message.status.toUpperCase()}</em></small><br>
+                <button style="margin-top: 5px; background-color: #007bff; font-size: 0.9em; padding: 5px 10px;" onclick="markMessageAsRead('${message.id}')">Mark as Read</button>
+                <button style="margin-top: 5px; background-color: #dc3545; font-size: 0.9em; padding: 5px 10px; margin-left: 5px;" onclick="deleteMessage('${message.id}')">Delete</button>
+            `;
+            list.appendChild(listItem);
+        });
+
+        document.getElementById('unreadMessageCount').textContent = `(${unreadCount} unread)`;
+        document.getElementById('noUserMessages').classList.toggle('hidden', hasMessages);
+    }
+
+    function markMessageAsRead(messageId) {
+        if (adminMessages[messageId]) {
+            adminMessages[messageId].status = 'read';
+            localStorage.setItem('adminMessages', JSON.stringify(adminMessages));
+            loadUserMessages();
+        }
+    }
+
+    function deleteMessage(messageId) {
+        if (confirm('Are you sure you want to delete this message?')) {
+            delete adminMessages[messageId];
+            localStorage.setItem('adminMessages', JSON.stringify(adminMessages));
+            loadUserMessages();
+        }
+    }
+
+
+    // CEO Login Logic
+    document.getElementById('ceoLoginForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const email = document.getElementById('ceoLoginEmail').value.trim();
+        const password = document.getElementById('ceoLoginPassword').value;
+        const msg = document.getElementById('ceoLoginMsg');
+        msg.classList.add('hidden');
+
+        const ceoAccount = admins[email];
+
+        if (!ceoAccount || ceoAccount.role !== 'ceo') {
+            msg.textContent = '❌ No CEO account found with this email.';
+            msg.classList.remove('hidden', 'success-msg');
+            msg.classList.add('error-msg');
+            return;
+        }
+
+        if (ceoAccount.password !== password) {
+            msg.textContent = '❌ Incorrect password.';
+            msg.classList.remove('hidden', 'success-msg');
+            msg.classList.add('error-msg');
+            return;
+        }
+
+        localStorage.setItem('currentAdmin', JSON.stringify({ email: ceoAccount.email, name: ceoAccount.name, role: ceoAccount.role }));
+        hideAllPanels();
+        document.getElementById('ceoPanel').classList.remove('hidden');
+        msg.textContent = '';
+        document.getElementById('ceoLoginEmail').value = '';
+        document.getElementById('ceoLoginPassword').value = '';
+        displayRotationHistory();
+    });
+
+    function logoutCEO() {
+        localStorage.removeItem('currentAdmin');
+        showLogin();
+    }
+
+    // --- Rotation Management Logic ---
+
+    function loadRotationSettings() {
+        document.getElementById('dailyInvest').value = rotationSettings.invest;
+        document.getElementById('dailyGain').value = rotationSettings.gain;
+        document.getElementById('currentRotationDay').textContent = rotationSettings.currentDay;
+    }
+
+    function saveRotationSettings() {
+        const invest = parseFloat(document.getElementById('dailyInvest').value);
+        const gain = parseFloat(document.getElementById('dailyGain').value);
+        const msg = document.getElementById('rotationSettingsMsg');
+        msg.classList.add('hidden');
+
+        if (isNaN(invest) || isNaN(gain) || invest < 0 || gain < 0) {
+            msg.textContent = '❌ Please enter valid numbers for Invest and Gain.';
+            msg.classList.remove('hidden', 'success-msg');
+            msg.classList.add('error-msg');
+            return;
+        }
+
+        rotationSettings.invest = invest;
+        rotationSettings.gain = gain;
+        localStorage.setItem('rotationSettings', JSON.stringify(rotationSettings));
+        msg.textContent = '✅ Rotation settings updated!';
+        msg.classList.remove('hidden', 'error-msg');
+        msg.classList.add('success-msg');
+        setTimeout(() => msg.classList.add('hidden'), 2000);
+    }
+
+    function loadAvailableMembersForRotation() {
+        const select = document.getElementById('availableMembersSelect');
+        select.innerHTML = '<option value="">-- Select Paid Member --</option>';
+
+        for (const email in users) {
+            const user = users[email];
+            if (user.verified && user.paid && !activeRotationMembers.includes(email)) {
+                const option = document.createElement('option');
+                option.value = email;
+                option.textContent = `${user.fullName} (${user.email})`;
+                select.appendChild(option);
+            }
+        }
+        document.getElementById('noActiveParticipants').classList.toggle('hidden', select.options.length > 1 || activeRotationMembers.length > 0);
+    }
+
+    function addParticipantToRotation() {
+        const select = document.getElementById('availableMembersSelect');
+        const emailToAdd = select.value;
+        const msg = document.getElementById('addParticipantMsg');
+        msg.classList.add('hidden');
+
+        if (!emailToAdd) {
+            msg.textContent = '❌ Please select a member to add.';
+            msg.classList.remove('hidden', 'success-msg');
+            msg.classList.add('error-msg');
+            return;
+        }
+
+        if (activeRotationMembers.includes(emailToAdd)) {
+            msg.textContent = 'ℹ️ This member is already in the rotation.';
+            msg.classList.remove('hidden', 'success-msg');
+            msg.classList.add('error-msg');
+            return;
+        }
+
+        activeRotationMembers.push(emailToAdd);
+        localStorage.setItem('activeRotationMembers', JSON.stringify(activeRotationMembers));
+
+        msg.textContent = `✅ ${users[emailToAdd].fullName} added to rotation!`;
+        msg.classList.remove('hidden', 'error-msg');
+        msg.classList.add('success-msg');
+        setTimeout(() => msg.classList.add('hidden'), 2000);
+
+        loadAvailableMembersForRotation();
+        displayRotationParticipants();
+    }
+
+    function displayRotationParticipants() {
+        const list = document.getElementById('rotationParticipantsList');
+        list.innerHTML = '';
+        let hasParticipants = false;
+
+        if (activeRotationMembers.length > 0) {
+            hasParticipants = true;
+            activeRotationMembers.forEach((email, index) => {
+                const userFullName = users[email]?.fullName || 'Unknown User';
+                const listItem = document.createElement('li');
+                listItem.textContent = `${userFullName} (${email})`;
+                if (index === rotationSettings.lastPaidMemberIndex) {
+                    listItem.classList.add('current-recipient');
+                    listItem.title = "Last member who received payment";
+                }
+                list.appendChild(listItem);
+            });
+        }
+
+        document.getElementById('noActiveParticipants').classList.toggle('hidden', hasParticipants);
+    }
+
+    function nextParticipant() {
+        const msg = document.getElementById('rotationStatusMsg');
+        msg.classList.add('hidden');
+
+        if (activeRotationMembers.length === 0) {
+            msg.textContent = '❌ No participants in rotation. Add members first.';
+            msg.classList.remove('hidden', 'success-msg');
+            msg.classList.add('error-msg');
+            return;
+        }
+
+        let nextIndex = (rotationSettings.lastPaidMemberIndex + 1) % activeRotationMembers.length;
+
+        const recipientEmail = activeRotationMembers[nextIndex];
+        const recipientName = users[recipientEmail]?.fullName || 'Unknown';
+
+        rotationSettings.currentDay++;
+        rotationSettings.lastPaidMemberIndex = nextIndex;
+        localStorage.setItem('rotationSettings', JSON.stringify(rotationSettings));
+
+        rotationHistory.push({
+            day: rotationSettings.currentDay,
+            recipientEmail: recipientEmail,
+            recipientName: recipientName,
+            invest: rotationSettings.invest,
+            gain: rotationSettings.gain,
+            timestamp: new Date().toLocaleString()
+        });
+        if (rotationHistory.length > 25) {
+            rotationHistory.shift();
+        }
+        localStorage.setItem('rotationHistory', JSON.stringify(rotationHistory));
+
+        msg.textContent = `✅ Day ${rotationSettings.currentDay}: ${recipientName} (${recipientEmail}) is the next recipient! Gain: $${rotationSettings.gain.toFixed(2)}`;
+        msg.classList.remove('hidden', 'error-msg');
+        msg.classList.add('success-msg');
+        setTimeout(() => msg.classList.add('hidden'), 3000);
+
+        loadRotationSettings();
+        displayRotationParticipants();
+        displayRotationHistory();
+    }
+
+
+    // --- CEO Specific Functions ---
+
+    function displayRotationHistory() {
+        const tableBody = document.querySelector('#ceoRotationHistoryTable tbody');
+        tableBody.innerHTML = '';
+        const noHistoryMsg = document.getElementById('noRotationHistory');
+
+        if (rotationHistory.length === 0) {
+            noHistoryMsg.classList.remove('hidden');
+            return;
+        } else {
+            noHistoryMsg.classList.add('hidden');
+        }
+
+        [...rotationHistory].reverse().forEach(entry => {
+            const row = tableBody.insertRow();
+            row.insertCell().textContent = entry.day;
+            row.insertCell().textContent = `${entry.recipientName} (${entry.recipientEmail})`;
+            row.insertCell().textContent = entry.invest.toFixed(2);
+            row.insertCell().textContent = entry.gain.toFixed(2);
+            row.insertCell().textContent = entry.timestamp;
+        });
+    }
+
+    function calculRotation() {
+        const msg = document.getElementById('ceoReportMsg');
+        msg.textContent = 'This button can be expanded to generate more complex reports (e.g., total funds, financial projections). For now, view the history above.';
+        msg.classList.remove('hidden');
+        msg.classList.remove('success-msg');
+        msg.classList.add('error-msg');
+        setTimeout(() => msg.classList.add('hidden'), 4000);
+    }
+
+    // --- Initial Load Logic ---
+    window.onload = function() {
+        // Ensure a default CEO account exists for demo purposes
+        if (!admins['ceo@dream2build.com'] || admins['ceo@dream2build.com'].role !== 'ceo') {
+            admins['ceo@dream2build.com'] = { name: 'CEO Admin', email: 'ceo@dream2build.com', password: 'admin123', role: 'ceo' };
+            localStorage.setItem('admins', JSON.stringify(admins));
+            console.log("Default CEO account created: ceo@dream2build.com / admin123");
+        }
+
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        const currentAdmin = JSON.parse(localStorage.getItem('currentAdmin'));
+
+        if (currentUser && currentUser.role === 'user') {
+            const user = users[currentUser.email];
+            if (user && user.verified) {
+                if (user.paid) {
+                    showMainPlatform(user.fullName);
+                } else {
+                    showPaymentPanel(user.fullName, user.email);
+                }
+            } else {
+                localStorage.removeItem('currentUser');
+                showLogin();
+            }
+        } else if (currentAdmin) {
+            if (currentAdmin.role === 'leader') {
+                hideAllPanels();
+                document.getElementById('leaderPanel').classList.remove('hidden');
+                document.getElementById('leaderNameDisplay').textContent = currentAdmin.name;
+                loadPendingPayments();
+                loadRotationSettings();
+                loadAvailableMembersForRotation();
+                displayRotationParticipants();
+                loadUserMessages();
+            } else if (currentAdmin.role === 'ceo') {
+                hideAllPanels();
+                document.getElementById('ceoPanel').classList.remove('hidden');
+                displayRotationHistory();
+            }
+        } else {
+            showSignUp();
+        }
+    };
+</script>
+
 </body>
 </html>
