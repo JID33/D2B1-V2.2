@@ -275,15 +275,15 @@
 <div class="form-section hidden" id="contactAdminPanel">
     <h2>📧 Contact Support</h2>
     <p>Have a question or an issue? Send us a message!</p>
-    <form id="contactAdminForm">
+    <form id="contactAdminForm" action="https://formspree.io/f/mzzgwonw" method="POST">
         <label for="contactEmail">Your Email:</label>
-        <input type="email" id="contactEmail" name="contactEmail" placeholder="Enter your email" required>
+        <input type="email" id="contactEmail" name="email" placeholder="Enter your email" required>
 
         <label for="contactSubject">Subject:</label>
-        <input type="text" id="contactSubject" name="contactSubject" placeholder="e.g., Payment issue, Account problem" required>
+        <input type="text" id="contactSubject" name="subject" placeholder="e.g., Payment issue, Account problem" required>
 
         <label for="contactMessage">Message:</label>
-        <textarea id="contactMessage" name="contactMessage" rows="5" placeholder="Type your message here..." required></textarea>
+        <textarea id="contactMessage" name="message" rows="5" placeholder="Type your message here..." required></textarea>
 
         <button type="submit">Send Message</button>
         <p id="contactAdminMsg" class="hidden"></p>
@@ -661,7 +661,10 @@
 
     // --- User Message System ---
     document.getElementById('contactAdminForm').addEventListener('submit', function(event) {
-        event.preventDefault();
+        // Prevent default form submission ONLY if you want to handle it with client-side JS
+        // If using Formspree, you typically let the default submission happen and handle success/error via Formspree's redirect or AJAX.
+        // For this demo, we'll keep the client-side simulation message AND allow Formspree to handle the actual submission.
+        // The preventDefault() is removed here for Formspree.
 
         const email = document.getElementById('contactEmail').value.trim();
         const subject = document.getElementById('contactSubject').value.trim();
@@ -677,6 +680,7 @@
             return;
         }
 
+        // Simulate client-side message handling, then let Formspree submit
         const messageId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
         adminMessages[messageId] = {
             id: messageId,
@@ -692,11 +696,17 @@
         msg.classList.remove('hidden', 'error-msg');
         msg.classList.add('success-msg');
 
+        // Formspree will handle clearing the form on successful submission to their server.
+        // We might not clear it here directly if we want the user to see the successful message before they are potentially redirected by Formspree.
+        // For a simple demo, keeping the client-side clearing for immediate feedback.
         document.getElementById('contactEmail').value = '';
         document.getElementById('contactSubject').value = '';
         document.getElementById('contactMessage').value = '';
 
         setTimeout(() => msg.classList.add('hidden'), 3000);
+
+        // Allow the form to submit to Formspree
+        // event.preventDefault() was removed earlier to enable this.
     });
 
     // --- Admin (Team Leader / CEO) Logic ---
