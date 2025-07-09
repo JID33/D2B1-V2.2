@@ -52,7 +52,7 @@ document.getElementById('signUpForm').addEventListener('submit', function(event)
     event.preventDefault();
     const fullName = document.getElementById('fullName').value.trim();
     const phoneNumber = document.getElementById('phoneNumber').value.trim();
-    const email = document.getElementById('email').value.trim();
+    const email = document.getElementById('email').value.trim().toLowerCase();
     const password = document.getElementById('password').value;
     const confirmPassword = document.getElementById('confirmPassword').value;
     const msg = document.getElementById('signUpMsg');
@@ -85,7 +85,7 @@ document.getElementById('signUpForm').addEventListener('submit', function(event)
 
 document.getElementById('loginForm').addEventListener('submit', function(event) {
     event.preventDefault();
-    const email = document.getElementById('loginEmail').value.trim();
+    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
     const password = document.getElementById('loginPassword').value;
     const msg = document.getElementById('loginMsg');
     msg.classList.add('hidden');
@@ -120,7 +120,7 @@ function showPaymentInstructions(value) {
 document.getElementById('paymentForm').addEventListener('submit', function(event) {
     event.preventDefault();
     const paymentMethod = document.getElementById('paymentMethod').value;
-    const currentUserEmail = document.getElementById('paymentPanel').dataset.currentUserEmail;
+    const currentUserEmail = document.getElementById('paymentPanel').dataset.currentUserEmail.toLowerCase();
     const msg = document.getElementById('paymentMsg');
     msg.classList.add('hidden');
     if (!paymentMethod) {
@@ -161,7 +161,7 @@ document.getElementById('paymentForm').addEventListener('submit', function(event
 
 // --- User Message System ---
 document.getElementById('contactAdminForm').addEventListener('submit', function(event) {
-    const email = document.getElementById('contactEmail').value.trim();
+    const email = document.getElementById('contactEmail').value.trim().toLowerCase();
     const subject = document.getElementById('contactSubject').value.trim();
     const messageText = document.getElementById('contactMessage').value.trim();
     const msg = document.getElementById('contactAdminMsg');
@@ -190,7 +190,7 @@ document.getElementById('leaderLoginForm').addEventListener('submit', function(e
 });
 function registerLeader() {
     const name = document.getElementById('leaderName').value.trim();
-    const email = document.getElementById('leaderEmailReg').value.trim();
+    const email = document.getElementById('leaderEmailReg').value.trim().toLowerCase();
     const pass1 = document.getElementById('leaderPass1').value;
     const pass2 = document.getElementById('leaderPass2').value;
     const msg = document.getElementById('leaderRegisterMsg');
@@ -206,7 +206,7 @@ function registerLeader() {
     document.getElementById('leaderPass2').value = '';
 }
 function loginLeader() {
-    const email = document.getElementById('loginLeaderEmail').value.trim();
+    const email = document.getElementById('loginLeaderEmail').value.trim().toLowerCase();
     const pass = document.getElementById('loginLeaderPass').value;
     const msg = document.getElementById('leaderLoginMsg');
     const stored = admins[email];
@@ -316,7 +316,7 @@ function deleteMessage(messageId) {
 // CEO Login Logic
 document.getElementById('ceoLoginForm').addEventListener('submit', function(event) {
     event.preventDefault();
-    const email = document.getElementById('ceoLoginEmail').value.trim();
+    const email = document.getElementById('ceoLoginEmail').value.trim().toLowerCase();
     const password = document.getElementById('ceoLoginPassword').value;
     const msg = document.getElementById('ceoLoginMsg');
     msg.classList.add('hidden');
