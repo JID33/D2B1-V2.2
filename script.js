@@ -27,6 +27,11 @@ function showMainPlatform(userName) {
     hideAllPanels();
     document.getElementById('mainPlatformPanel').classList.remove('hidden');
     document.getElementById('loggedInUserName').textContent = userName;
+    // Show rotation history for the logged-in user
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if(currentUser && currentUser.email) {
+        displayUserRotationHistory(currentUser.email);
+    }
 }
 function showAdminLoginRegister() {
     hideAllPanels();
@@ -35,6 +40,12 @@ function showAdminLoginRegister() {
 }
 function showCEOLogin() { hideAllPanels(); document.getElementById('ceoLoginPanel').classList.remove('hidden'); }
 function showContactAdmin() { hideAllPanels(); document.getElementById('contactAdminPanel').classList.remove('hidden'); }
+function showCEOPanel() {
+    hideAllPanels();
+    document.getElementById('ceoPanel').classList.remove('hidden');
+    displayRotationHistory();
+    displayInscriptionHistory();
+}
 
 // --- Data Storage (Client-Side Simulation) ---
 const users = JSON.parse(localStorage.getItem('users')) || {};
@@ -328,12 +339,10 @@ document.getElementById('ceoLoginForm').addEventListener('submit', function(even
         msg.textContent = '❌ Incorrect password.'; msg.classList.remove('hidden', 'success-msg'); msg.classList.add('error-msg'); return;
     }
     localStorage.setItem('currentAdmin', JSON.stringify({ email: ceoAccount.email, name: ceoAccount.name, role: ceoAccount.role }));
-    hideAllPanels();
-    document.getElementById('ceoPanel').classList.remove('hidden');
+    showCEOPanel();
     msg.textContent = '';
     document.getElementById('ceoLoginEmail').value = '';
     document.getElementById('ceoLoginPassword').value = '';
-    displayRotationHistory();
 });
 function logoutCEO() { localStorage.removeItem('currentAdmin'); showLogin(); }
 
@@ -457,6 +466,61 @@ function displayRotationHistory() {
         row.insertCell().textContent = entry.timestamp;
     });
 }
+
+// --- User Dashboard: Rotation History ---
+function displayUserRotationHistory(currentUserEmail) {
+    const tableBody = document.querySelector('#userRotationHistoryTable tbody');
+    tableBody.innerHTML = '';
+    const noHistoryMsg = document.getElementById('noUserRotationHistory');
+    // Show entries where recipient is the current user
+    const filtered = rotationHistory.filter(entry => entry.recipientEmail === currentUserEmail);
+    if (filtered.length === 0) {
+        noHistoryMsg.classList.remove('hidden');
+        return;
+    } else {
+        noHistoryMsg.classList.add('hidden');
+    }
+    filtered.reverse().forEach(entry => {
+        const row = tableBody.insertRow();
+        row.insertCell().textContent = entry.day;
+        row.insertCell().textContent = `${entry.recipientName} (${entry.recipientEmail})`;
+        row.insertCell().textContent = entry.invest.toFixed(2);
+        row.insertCell().textContent = entry.gain.toFixed(2);
+        row.insertCell().textContent = entry.timestamp;
+    });
+}
+
+// --- CEO Dashboard: All Users/Leaders History ---
+function displayInscriptionHistory() {
+    const tableBody = document.querySelector('#inscriptionHistoryTable tbody');
+    tableBody.innerHTML = '';
+    // Show all users
+    for (const email in users) {
+        const user = users[email];
+        const row = tableBody.insertRow();
+        row.insertCell().textContent = user.fullName;
+        row.insertCell().textContent = email;
+        row.insertCell().textContent = "User";
+        row.insertCell().textContent = user.verified ? "Yes" : "No";
+        row.insertCell().textContent = user.paid ? "Yes" : "No";
+        // Gain can be calculated based on rotationHistory, for now just show total gain received
+        const totalGain = rotationHistory.filter(e => e.recipientEmail === email)
+                                         .reduce((sum, e) => sum + (e.gain || 0), 0);
+        row.insertCell().textContent = '$' + totalGain.toFixed(2);
+    }
+    // Show all leaders
+    for (const email in admins) {
+        const admin = admins[email];
+        const row = tableBody.insertRow();
+        row.insertCell().textContent = admin.name;
+        row.insertCell().textContent = email;
+        row.insertCell().textContent = admin.role.charAt(0).toUpperCase() + admin.role.slice(1);
+        row.insertCell().textContent = "Yes";
+        row.insertCell().textContent = "-";
+        row.insertCell().textContent = "-";
+    }
+}
+
 function calculRotation() {
     const msg = document.getElementById('ceoReportMsg');
     msg.textContent = 'This button can be expanded to generate more complex reports (e.g., total funds, financial projections). For now, view the history above.';
@@ -492,9 +556,7 @@ window.onload = function() {
             loadPendingPayments(); loadRotationSettings(); loadAvailableMembersForRotation();
             displayRotationParticipants(); loadUserMessages();
         } else if (currentAdmin.role === 'ceo') {
-            hideAllPanels();
-            document.getElementById('ceoPanel').classList.remove('hidden');
-            displayRotationHistory();
+            showCEOPanel();
         }
     } else {
         showSignUp();
