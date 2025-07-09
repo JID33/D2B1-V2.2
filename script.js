@@ -147,7 +147,6 @@ document.getElementById('paymentForm').addEventListener('submit', function(event
             user.paid = true;
             localStorage.setItem('users', JSON.stringify(users));
             localStorage.setItem('currentUser', JSON.stringify({ email: user.email, name: user.fullName, role: 'user' }));
-            // NEW: Add to rotation if not already present
             if (!activeRotationMembers.includes(currentUserEmail)) {
                 activeRotationMembers.push(currentUserEmail);
                 localStorage.setItem('activeRotationMembers', JSON.stringify(activeRotationMembers));
@@ -231,7 +230,7 @@ function loadPendingPayments() {
         const payment = pendingPayments[email];
         if (payment.status === 'pending_leader_validation') {
             hasPending = true;
-            const userDisplayName = payment.name || users[email]?.fullName || 'Unknown User';
+            const userDisplayName = users[email] ? users[email].fullName : 'Unknown User';
             const listItem = document.createElement('li');
             listItem.innerHTML = `
                 <strong>${userDisplayName}</strong> (${payment.email}) - Method: ${payment.method} - Submitted: ${payment.timestamp}
@@ -246,12 +245,12 @@ function loadPendingPayments() {
     document.getElementById('noPendingPayments').classList.toggle('hidden', hasPending);
 }
 function validatePayment(email) {
+    email = email.toLowerCase();
     if (users[email]) {
         users[email].paid = true;
         localStorage.setItem('users', JSON.stringify(users));
         delete pendingPayments[email];
         localStorage.setItem('pendingPayments', JSON.stringify(pendingPayments));
-        // Add to rotation if not already there
         if (!activeRotationMembers.includes(email)) {
             activeRotationMembers.push(email);
             localStorage.setItem('activeRotationMembers', JSON.stringify(activeRotationMembers));
@@ -263,14 +262,15 @@ function validatePayment(email) {
         loadAvailableMembersForRotation();
         displayRotationParticipants();
     } else {
-        alert(`Error: User with email ${email} not found.`);
+        alert(`Error: User with email ${email} not found. Please ensure the user has registered. If not, reject this payment.`);
     }
 }
 function rejectPayment(email) {
-    if (users[email]) {
+    email = email.toLowerCase();
+    if (users[email] || pendingPayments[email]) {
         delete pendingPayments[email];
         localStorage.setItem('pendingPayments', JSON.stringify(pendingPayments));
-        alert(`Payment for ${users[email].fullName} (${email}) rejected. User needs to resubmit.`);
+        alert(`Payment for ${users[email]?.fullName || email} rejected. User needs to resubmit.`);
         loadPendingPayments();
     }
 }
