@@ -252,15 +252,12 @@
             background-color: #5a6268;
         }
     </style>
-    <!-- Moved script.js to head with defer attribute -->
     <script src="script.js" defer></script>
 </head>
 <body>
 
-<!-- Main Title -->
 <h1>Dream2Build1 - Authentication & Payment System</h1>
 
-<!-- Section: User Registration (Sign Up) -->
 <div class="form-section" id="signUpPanel">
     <h2>📝 Sign Up for Access</h2>
     <form id="signUpForm">
@@ -291,7 +288,6 @@
     <p style="text-align: center; margin-top: 15px;">Already have an account? <a href="#" onclick="event.preventDefault(); showLogin();">Login here</a></p>
 </div>
 
-<!-- Section: User Login -->
 <div class="form-section hidden" id="loginPanel">
     <h2>🔐 Log In to Your Account</h2>
     <form id="loginForm">
@@ -311,7 +307,6 @@
     </p>
 </div>
 
-<!-- Section: Email Verification Message -->
 <div class="panel hidden" id="verificationMessagePanel">
     <h2>📧 Verify Your Email</h2>
     <p>A verification message has been simulated for <strong id="verificationEmailDisplay"></strong>. In a real system, you'd receive an email to verify your account.</p>
@@ -319,7 +314,6 @@
     <button onclick="event.preventDefault(); showLogin();">Go to Login (After Verification)</button>
 </div>
 
-<!-- Section: Payment Panel (Appears after login if not paid) -->
 <div class="panel hidden" id="paymentPanel">
     <h2>💳 Complete Your Payment</h2>
     <p>Welcome, <span id="paymentUserName"></span>! To access the full platform, please complete your payment.</p>
@@ -373,13 +367,11 @@
 </div>
 
 
-<!-- Section: Main User Platform (Accessible after login AND payment) -->
 <div class="panel hidden" id="mainPlatformPanel">
     <h2>Bienvenue sur Dream2Build1, <span id="loggedInUserName"></span>!</h2>
     <div id="mainPlatform">
         <p>This is your main platform content, accessible only after successful login and payment.</p>
         <p id="adminAreaNote"></p>
-        <!-- Participant's Invest/Gain Display -->
         <div id="participantFinancials" style="margin-top: 20px; border: 1px solid #007BFF; padding: 15px; border-radius: 8px; background-color: #e6f2ff;">
             <h3>Your Financials:</h3>
             <p>Your Investment per cycle: <strong>$<span id="participantInvest">0.00</span></strong></p>
@@ -387,13 +379,21 @@
             <p>Your Referral Code: <strong><span id="participantReferralCode">N/A</span></strong></p>
         </div>
         <p style="margin-top: 20px;">🚀 Ready to build your dreams!</p>
-    </div>
+        <div style="margin-top: 30px; padding: 15px; background-color: #f0f0f0; border-radius: 8px;">
+            <h3>Outils et Rapports</h3>
+            <p>Accédez au système de rotation en ligne : 
+               <a href="https://jid33.github.io/link-to-ceo-users-leader-dashboard/" target="_blank" 
+                  style="background-color: #28a745; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px;">
+                  Rotation en ligne D2B1
+               </a>
+            </p>
+        </div>
+        </div>
     <div class="logout-btn">
         <button onclick="logoutUser()">Log Out</button>
     </div>
 </div>
 
-<!-- Section: Contact Admin Panel -->
 <div class="form-section hidden" id="contactAdminPanel">
     <h2>📧 Contact Support</h2>
     <p>Have a question or an issue? Send us a message!</p>
@@ -413,15 +413,12 @@
     <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="event.preventDefault(); showLogin();">Back to Login</a></p>
 </div>
 
-<!-- --- Admin/Leader/CEO sections --- -->
-<!-- This panel is now ONLY for initial leader registration via link from main login -->
 <div class="form-section hidden" id="leaderRegisterPanel">
     <h2>👥 Register New Team Leader</h2>
     <p>This section is for new Team Leaders to register themselves. The CEO adds new leaders from their dashboard.</p>
     <p style="text-align: center; margin-top: 15px;">Already registered? <a href="#" onclick="event.preventDefault(); showLeaderLoginOnly();">Login here</a></p>
 </div>
 
-<!-- Section : Team Leader Login -->
 <div class="form-section hidden" id="leaderLoginPanel">
     <h2>🔐 Team Leader Login (Admin Only)</h2>
     <form id="leaderLoginForm">
@@ -440,7 +437,6 @@
     </p>
 </div>
 
-<!-- Section: CEO Login -->
 <div class="form-section hidden" id="ceoLoginPanel">
     <h2>👑 CEO Login</h2>
     <form id="ceoLoginForm">
@@ -457,7 +453,6 @@
 </div>
 
 
-<!-- Section : Team Leader Dashboard -->
 <div id="leaderPanel" class="panel hidden">
     <h2>🧑‍🤝‍🧑 Team Leader Dashboard</h2>
     <p>Welcome, <span id="leaderNameDisplay"></span>!</p>
@@ -466,17 +461,25 @@
     </div>
 
     <hr>
+    <div style="margin-top: 20px; padding: 15px; background-color: #f0f0f0; border-radius: 8px;">
+        <h3>Accès Rapide</h3>
+        <p>Gérer le système de rotation en ligne : 
+           <a href="https://jid33.github.io/link-to-ceo-users-leader-dashboard/" target="_blank" 
+              style="background-color: #007BFF; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px;">
+              Rotation D2B1 (Admin)
+           </a>
+        </p>
+    </div>
+    <hr>
     <h3>💸 Pending Payments:</h3>
     <ul id="pendingPaymentsList">
-        <!-- Pending payments will be dynamically added here -->
-    </ul>
+        </ul>
     <p id="noPendingPayments" style="font-style: italic;">No pending payments.</p>
 
     <hr>
     <h3>✉️ User Messages: <span id="unreadMessageCount">(0 unread)</span></h3>
     <ul id="userMessagesList">
-        <!-- Messages will be dynamically added here -->
-    </ul>
+        </ul>
     <p id="noUserMessages" style="font-style: italic;">No new messages.</p>
 
     <hr>
@@ -493,14 +496,12 @@
         <h4>Participants in Rotation:</h4>
         <select id="availableMembersSelect" style="width: 70%; display: inline-block; margin-right: 10px;">
             <option value="">-- Select Paid & Active Member --</option>
-            <!-- Options will be dynamically loaded here -->
-        </select>
+            </select>
         <button style="background-color: #007BFF; width: auto; padding: 10px 15px; margin-right: 0;" onclick="addParticipantToRotation()">Add Participant</button>
         <p id="addParticipantMsg" class="hidden"></p>
 
         <ul id="rotationParticipantsList">
-            <!-- Active participants will be listed here -->
-        </ul>
+            </ul>
         <p id="noActiveParticipants" style="font-style: italic;">No participants in rotation.</p>
 
         <button style="background-color: #ffc107;" onclick="nextParticipant()">Next Participant (Rotate)</button>
@@ -521,8 +522,7 @@
             </tr>
         </thead>
         <tbody>
-            <!-- User accounts will be dynamically added here -->
-        </tbody>
+            </tbody>
     </table>
     <p id="noUsersFound" style="font-style: italic;">No users registered yet.</p>
 
@@ -539,7 +539,6 @@
     </p>
 </div>
 
-<!-- Section : CEO Dashboard -->
 <div id="ceoPanel" class="panel hidden">
     <h2>👑 CEO Dashboard</h2>
     <p>Welcome, CEO!</p>
@@ -547,6 +546,16 @@
         <button onclick="logoutCEO()">Logout CEO</button>
     </div>
 
+    <hr>
+    <div style="margin-top: 20px; padding: 15px; background-color: #f0f0f0; border-radius: 8px;">
+        <h3>Outils d'Administration Avancés</h3>
+        <p>Accéder au système de rotation et gestion d'admin : 
+           <a href="https://jid33.github.io/link-to-ceo-users-leader-dashboard/" target="_blank" 
+              style="background-color: #004080; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px;">
+              Rotation D2B1 (Mode Avancé)
+           </a>
+        </p>
+    </div>
     <hr>
     <h3>📈 Rotation History (Last 25 Days):</h3>
     <table id="ceoRotationHistoryTable">
@@ -561,8 +570,7 @@
             </tr>
         </thead>
         <tbody>
-            <!-- History will be dynamically added here -->
-        </tbody>
+            </tbody>
     </table>
     <p id="noRotationHistory" class="hidden">No rotation history available yet.</p>
 
@@ -578,13 +586,11 @@
             </tr>
         </thead>
         <tbody>
-            <!-- System history will be dynamically added here -->
-        </tbody>
+            </tbody>
     </table>
     <p id="noAdminHistory" class="hidden">No system history available yet.</p>
 
     <hr>
-    <!-- Moved Add New Admin section here -->
     <div class="form-section">
         <h3>👥 Add New Admin (CEO Only)</h3>
         <p>Use this section to create new Team Leader accounts.</p>
