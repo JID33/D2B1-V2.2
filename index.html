@@ -417,24 +417,7 @@
 <!-- This panel is now ONLY for initial leader registration via link from main login -->
 <div class="form-section hidden" id="leaderRegisterPanel">
     <h2>👥 Register New Team Leader</h2>
-    <p>This section is for new Team Leaders to register if they have been given a direct link.</p>
-    <label for="newAdminFirstName">First Name:</label>
-    <input type="text" id="newAdminFirstName" placeholder="Enter first name">
-
-    <label for="newAdminLastName">Last Name:</label>
-    <input type="text" id="newAdminLastName" placeholder="Enter last name">
-
-    <label for="newAdminPhoneNumber">Phone Number:</label>
-    <input type="tel" id="newAdminPhoneNumber" placeholder="Enter phone number">
-
-    <label for="newAdminEmail">Email:</label>
-    <input type="email" id="newAdminEmail" placeholder="Enter email">
-
-    <label for="newAdminPass">Create Password:</label>
-    <input type="password" id="newAdminPass" placeholder="Create password">
-
-    <button onclick="addAdmin()">Register New Leader</button>
-    <p id="newAdminMsg"></p>
+    <p>This section is for new Team Leaders to register themselves. The CEO adds new leaders from their dashboard.</p>
     <p style="text-align: center; margin-top: 15px;">Already registered? <a href="#" onclick="event.preventDefault(); showLeaderLoginOnly();">Login here</a></p>
 </div>
 
