@@ -4,39 +4,261 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Dream2Build1 - Authentication & Payment</title>
-    <!-- ... your styles remain unchanged ... -->
     <style>
-        /* ... your existing styles ... */
-        #userRotationHistoryTable,
-        #inscriptionHistoryTable {
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f1f1f1; }
+        h1, h2 { text-align: center; color: #007BFF; }
+        .container, .panel, .form-section {
+            max-width: 900px; margin: auto; background: white; padding: 20px;
+            border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input, select, textarea {
+            width: 100%; padding: 10px; margin-top: 5px; margin-bottom: 15px;
+            border: 1px solid #ccc; border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #28a745; color: white; border: none; padding: 10px 20px;
+            font-size: 16px; border-radius: 5px; cursor: pointer;
+        }
+        button:hover { background-color: #218838; }
+        .hidden { display: none; }
+        .logout-btn button { background-color: #dc3545; }
+        .error-msg { color: red; font-weight: bold; }
+        .success-msg { color: green; font-weight: bold; }
+
+        /* Specific styles for the main platform content */
+        #mainPlatform {
+            border: 1px dashed #007BFF;
+            padding: 30px;
+            text-align: center;
+            font-size: 1.2em;
+            color: #007BFF;
+        }
+        .paiement-etapes {
+            display: none; /* Hidden by default, shown by JS */
+            background: #fff3cd;
+            padding: 10px; border-left: 5px solid #ffc107; margin-bottom: 20px;
+        }
+        .paiement-etapes .hidden {
+            display: none;
+        }
+        .paiement-etapes div {
+            margin-top: 10px;
+        }
+        .paiement-submit-btn {
+            background-color: #007BFF; /* Blue for payment */
+        }
+        .paiement-submit-btn:hover {
+            background-color: #0056b3;
+        }
+        #pendingPaymentsList li {
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        #pendingPaymentsList li button {
+            padding: 5px 10px;
+            font-size: 0.9em;
+        }
+        /* New styles for Rotation Management */
+        .rotation-section {
+            background: #e9f7ef;
+            border: 1px solid #d4edda;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+        }
+        .rotation-section label {
+            width: auto;
+            margin-right: 10px;
+            display: inline-block;
+        }
+        .rotation-section input {
+            width: calc(50% - 70px); /* Adjust width to fit with label */
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .rotation-section button {
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        #rotationParticipantsList {
+            list-style-type: decimal;
+            padding-left: 20px;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px dashed #28a745;
+            padding-top: 10px;
+            padding-bottom: 10px;
+            border-radius: 5px;
+        }
+        #rotationParticipantsList li {
+            padding: 5px 0;
+            border-bottom: 1px dotted #ccc;
+        }
+        #rotationParticipantsList li:last-child {
+            border-bottom: none;
+        }
+        .current-recipient {
+            background-color: #d4edda;
+            font-weight: bold;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        /* CEO Rotation History Table */
+        #ceoRotationHistoryTable {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
         }
-        #userRotationHistoryTable th, #userRotationHistoryTable td,
-        #inscriptionHistoryTable th, #inscriptionHistoryTable td {
+        #ceoRotationHistoryTable th,
+        #ceoRotationHistoryTable td {
             border: 1px solid #ddd;
             padding: 8px;
             text-align: left;
         }
-        #userRotationHistoryTable th, #inscriptionHistoryTable th {
+        #ceoRotationHistoryTable th {
             background-color: #007BFF;
             color: white;
         }
-        #userRotationHistoryTable tbody tr:nth-child(even),
-        #inscriptionHistoryTable tbody tr:nth-child(even) {
+        #ceoRotationHistoryTable tbody tr:nth-child(even) {
             background-color: #f2f2f2;
         }
-        #noUserRotationHistory, #noInscriptionHistory {
+        #noRotationHistory {
             font-style: italic;
             color: #777;
             text-align: center;
             margin-top: 15px;
         }
+
+        /* Styles for User Messages list */
+        #userMessagesList li {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        #userMessagesList li.unread {
+            background-color: #fffde7; /* Light yellow for unread */
+            border-color: #ffe082;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
-<!-- ... your existing content ... -->
+
+<h1>Dream2Build1 - Authentication & Payment System</h1>
+
+<div class="form-section" id="signUpPanel">
+    <h2>📝 Sign Up for Access</h2>
+    <form id="signUpForm">
+        <label for="fullName">Full Name:</label>
+        <input type="text" id="fullName" name="fullName" placeholder="Enter your full name" required>
+
+        <label for="phoneNumber">Phone Number:</label>
+        <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="e.g., +150912345678" required>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" placeholder="Enter your email" required>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" placeholder="Create your password" required>
+
+        <label for="confirmPassword">Confirm Password:</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Re-enter your password" required>
+
+        <button type="submit">Sign Up</button>
+        <p id="signUpMsg" class="hidden"></p>
+    </form>
+    <p style="text-align: center; margin-top: 15px;">Already have an account? <a href="#" onclick="showLogin()">Login here</a></p>
+</div>
+
+<div class="form-section hidden" id="loginPanel">
+    <h2>🔐 Log In to Your Account</h2>
+    <form id="loginForm">
+        <label for="loginEmail">Email:</label>
+        <input type="email" id="loginEmail" name="loginEmail" placeholder="Enter your email" required>
+
+        <label for="loginPassword">Password:</label>
+        <input type="password" id="loginPassword" name="loginPassword" placeholder="Enter your password" required>
+
+        <button type="submit">Log In</button>
+        <p id="loginMsg" class="hidden"></p>
+    </form>
+    <p style="text-align: center; margin-top: 15px;">Don't have an account? <a href="#" onclick="showSignUp()">Sign Up here</a></p>
+    <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="showContactAdmin()">Contact Support</a></p>
+    <p style="text-align: center; margin-top: 20px;">
+        <button style="background-color: #6c757d;" onclick="showAdminLoginRegister()">Admin / Leader Access</button>
+    </p>
+</div>
+
+<div class="panel hidden" id="verificationMessagePanel">
+    <h2>📧 Verify Your Email</h2>
+    <p>A verification message has been simulated for <strong id="verificationEmailDisplay"></strong>. In a real system, you'd receive an email to verify your account.</p>
+    <p>For this demo, your account is automatically considered verified.</p>
+    <button onclick="showLogin()">Go to Login (After Verification)</button>
+</div>
+
+<div class="panel hidden" id="paymentPanel">
+    <h2>💳 Complete Your Payment</h2>
+    <p>Welcome, <span id="paymentUserName"></span>! To access the full platform, please complete your payment.</p>
+    <form id="paymentForm">
+        <label for="paymentMethod">Choose Payment Method:</label>
+        <select id="paymentMethod" name="paymentMethod" onchange="showPaymentInstructions(this.value)" required>
+            <option value="">-- Select Payment Method --</option>
+            <option value="cash">Cash</option>
+            <option value="mastercard">Mastercard / Debit Card</option>
+            <option value="paypal">PayPal</option>
+            <option value="moncash">MonCash</option>
+            <option value="natcash">NatCash</option>
+        </select>
+
+        <div class="paiement-etapes" id="paymentInstructions">
+            <div id="cashInfo" class="hidden">
+                <p><strong>Cash:</strong> A team leader will contact you to validate your payment.</p>
+                <p>Once validated, your account will be fully activated. Click "Submit Payment Info" below to confirm your intent to pay by cash.</p>
+            </div>
+            <div id="mastercardInfo" class="hidden">
+                <p><strong>Mastercard / Debit Card:</strong> (Simulated payment)</p>
+                <label>Card Number (16 digits):</label>
+                <input type="text" id="cardNumber" maxlength="16" pattern="\d{16}" placeholder="1234 5678 9012 3456">
+                <label>Expiration Date (MM/YY):</label>
+                <input type="text" id="cardExpiry" maxlength="5" pattern="\d{2}/\d{2}" placeholder="MM/YY">
+                <label>CVC:</label>
+                <input type="text" id="cardCVC" maxlength="4" pattern="\d{3,4}" placeholder="123">
+                <label>Name on Card:</label>
+                <input type="text" id="cardName" placeholder="Name as on card">
+            </div>
+            <div id="paypalInfo" class="hidden">
+                <p><strong>PayPal:</strong> (Simulated payment)</p>
+                <p>In a real system, you would be redirected to PayPal. For this demo, simply submit.</p>
+                <p>Use this PayPal email to pay: <strong>dream2build@gmail.com</strong></p>
+            </div>
+            <div id="moncashInfo" class="hidden">
+                <p><strong>MonCash:</strong> (Simulated payment)</p>
+                <p>Send payment to <strong>+509 43260012</strong> (Name: Emmanuel Jean Frantz JEAMBAS)</p>
+            </div>
+            <div id="natcashInfo" class="hidden">
+                <p><strong>NatCash:</strong> (Simulated payment)</p>
+                <p>Send payment to <strong>+509 43260012</strong> (Name: Emmanuel Jean Frantz JEAMBAS)</p>
+            </div>
+        </div>
+        <button type="submit" class="paiement-submit-btn">Submit Payment Info</button>
+        <p id="paymentMsg" class="hidden"></p>
+    </form>
+    <div class="logout-btn">
+        <button onclick="logoutUser()">Log Out</button>
+    </div>
+</div>
+
 
 <div class="panel hidden" id="mainPlatformPanel">
     <h2>Bienvenue sur Dream2Build1, <span id="loggedInUserName"></span>!</h2>
@@ -45,31 +267,130 @@
         <p>Here you can explore all features, except the administration area.</p>
         <p>🚀 Ready to build your dreams!</p>
     </div>
-    <!-- User Rotation History Section -->
-    <div id="userRotationHistorySection" style="margin-top:30px;">
-        <h3>My Rotation History</h3>
-        <table id="userRotationHistoryTable">
-            <thead>
-                <tr>
-                    <th>Day</th>
-                    <th>Recipient</th>
-                    <th>Invest ($)</th>
-                    <th>Gain ($)</th>
-                    <th>Date/Time</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Rows will be inserted by JS -->
-            </tbody>
-        </table>
-        <p id="noUserRotationHistory" class="hidden">No rotation history available yet.</p>
-    </div>
     <div class="logout-btn">
         <button onclick="logoutUser()">Log Out</button>
     </div>
 </div>
 
-<!-- ... your existing content ... -->
+<div class="form-section hidden" id="contactAdminPanel">
+    <h2>📧 Contact Support</h2>
+    <p>Have a question or an issue? Send us a message!</p>
+    <form id="contactAdminForm" action="https://formspree.io/f/mzzgwonw" method="POST">
+        <label for="contactEmail">Your Email:</label>
+        <input type="email" id="contactEmail" name="email" placeholder="Enter your email" required>
+
+        <label for="contactSubject">Subject:</label>
+        <input type="text" id="contactSubject" name="subject" placeholder="e.g., Payment issue, Account problem" required>
+
+        <label for="contactMessage">Message:</label>
+        <textarea id="contactMessage" name="message" rows="5" placeholder="Type your message here..." required></textarea>
+
+        <button type="submit">Send Message</button>
+        <p id="contactAdminMsg" class="hidden"></p>
+    </form>
+    <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="showLogin()">Back to Login</a></p>
+</div>
+
+<div class="form-section hidden" id="leaderRegisterPanel">
+    <h2>👥 Team Leader Registration (Admin Only)</h2>
+    <label for="leaderName">Full Name:</label>
+    <input type="text" id="leaderName" placeholder="Enter full name">
+
+    <label for="leaderEmailReg">Email:</label>
+    <input type="email" id="leaderEmailReg" placeholder="Enter email">
+
+    <label for="leaderPass1">Create Password:</label>
+    <input type="password" id="leaderPass1" placeholder="Create password">
+
+    <label for="leaderPass2">Confirm Password:</label>
+    <input type="password" id="leaderPass2" placeholder="Confirm password">
+
+    <button onclick="registerLeader()">Register as Team Leader</button>
+    <p id="leaderRegisterMsg"></p>
+</div>
+
+<div class="form-section hidden" id="leaderLoginPanel">
+    <h2>🔐 Team Leader Login (Admin Only)</h2>
+    <form id="leaderLoginForm">
+        <label for="loginLeaderEmail">Email:</label>
+        <input type="email" id="loginLeaderEmail" name="loginLeaderEmail" placeholder="Enter email" required>
+
+        <label for="loginLeaderPass">Password:</label>
+        <input type="password" id="loginLeaderPass" name="loginLeaderPass" placeholder="Enter password" required>
+
+        <button type="submit">Login</button>
+        <p id="leaderLoginMsg"></p>
+    </form>
+    <p style="text-align: center; margin-top: 20px;">
+        <button style="background-color: #6c757d;" onclick="showCEOLogin()">Login as CEO</button>
+    </p>
+</div>
+
+<div class="form-section hidden" id="ceoLoginPanel">
+    <h2>👑 CEO Login</h2>
+    <form id="ceoLoginForm">
+        <label for="ceoLoginEmail">Email:</label>
+        <input type="email" id="ceoLoginEmail" name="ceoLoginEmail" placeholder="Enter CEO email" required>
+
+        <label for="ceoLoginPassword">Password:</label>
+        <input type="password" id="ceoLoginPassword" name="ceoLoginPassword" placeholder="Enter CEO password" required>
+
+        <button type="submit">Log In as CEO</button>
+        <p id="ceoLoginMsg" class="hidden"></p>
+    </form>
+    <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="showAdminLoginRegister()">Back to Admin/Leader Login</a></p>
+</div>
+
+
+<div id="leaderPanel" class="panel hidden">
+    <h2>🧑‍🤝‍🧑 Team Leader Dashboard</h2>
+    <p>Welcome, <span id="leaderNameDisplay"></span>!</p>
+    <div class="logout-btn">
+        <button onclick="logoutLeader()">Logout</button>
+    </div>
+
+    <hr>
+    <h3>💸 Pending Payments:</h3>
+    <ul id="pendingPaymentsList">
+        </ul>
+    <p id="noPendingPayments" style="font-style: italic;">No pending payments.</p>
+
+    <hr>
+    <h3>✉️ User Messages: <span id="unreadMessageCount">(0 unread)</span></h3>
+    <ul id="userMessagesList">
+        </ul>
+    <p id="noUserMessages" style="font-style: italic;">No new messages.</p>
+
+    <hr>
+    <div class="rotation-section">
+        <h3>🔄 Rotation Management</h3>
+        <p>Current Rotation Day: <strong id="currentRotationDay">0</strong></p>
+        <label for="dailyInvest">Daily Investment ($):</label>
+        <input type="number" id="dailyInvest" value="100" min="0" step="0.01">
+
+        <label for="dailyGain">Daily Gain ($):</label>
+        <input type="number" id="dailyGain" value="1000" min="0" step="0.01">
+
+        <button onclick="saveRotationSettings()">Update Settings</button>
+        <p id="rotationSettingsMsg" class="hidden"></p>
+
+        <hr>
+        <h4>Participants in Rotation:</h4>
+        <select id="availableMembersSelect" style="width: 70%; display: inline-block; margin-right: 10px;">
+            <option value="">-- Select Paid Member --</option>
+            </select>
+        <button style="background-color: #007BFF; width: auto; padding: 10px 15px; margin-right: 0;" onclick="addParticipantToRotation()">Add Participant</button>
+        <p id="addParticipantMsg" class="hidden"></p>
+
+        <ul id="rotationParticipantsList">
+            </ul>
+        <p id="noActiveParticipants" style="font-style: italic;">No participants in rotation.</p>
+
+        <button style="background-color: #ffc107;" onclick="nextParticipant()">Next Participant (Rotate)</button>
+        <p id="rotationStatusMsg" class="hidden"></p>
+    </div>
+
+</div>
 
 <div id="ceoPanel" class="panel hidden">
     <h2>👑 CEO Dashboard</h2>
@@ -95,31 +416,11 @@
     </table>
     <p id="noRotationHistory" class="hidden">No rotation history available yet.</p>
 
-    <!-- New Inscription/Payment History Section for CEO -->
-    <div id="inscriptionHistorySection" style="margin-top:30px;">
-        <h3>Users and Leaders Registration & Payment History</h3>
-        <table id="inscriptionHistoryTable">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Registered</th>
-                    <th>Paid</th>
-                    <th>Gain</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Rows will be inserted by JS -->
-            </tbody>
-        </table>
-        <p id="noInscriptionHistory" class="hidden">No registration/payment history available yet.</p>
-    </div>
-
     <button style="margin-top: 20px;" onclick="calculRotation()">Generate Comprehensive Report (Future Feature)</button>
     <p id="ceoReportMsg" class="hidden" style="margin-top: 10px;"></p>
 </div>
 
+<script></script>
 <script src="script.js"></script>
 </body>
 </html>
