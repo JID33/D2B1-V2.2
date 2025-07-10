@@ -1,564 +1,636 @@
-// Dream2Build1 - Main Script
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid'); // For generating unique IDs
+const fs = require('fs').promises; // Node.js file system promises API
+const path = require('path'); // For resolving file paths
 
-// --- Helper Functions to Toggle Panels ---
-function hideAllPanels() {
-    const ids = [
-        'signUpPanel', 'loginPanel', 'verificationMessagePanel', 'paymentPanel',
-        'mainPlatformPanel', 'leaderRegisterPanel', 'leaderLoginPanel', 'ceoLoginPanel',
-        'leaderPanel', 'ceoPanel', 'contactAdminPanel'
-    ];
-    ids.forEach(id => document.getElementById(id).classList.add('hidden'));
-}
+const app = express();
+const PORT = 3000;
+const SECRET_KEY = 'your_secret_key'; // Replace with a strong, random secret key in production!
 
-function showSignUp() { hideAllPanels(); document.getElementById('signUpPanel').classList.remove('hidden'); }
-function showLogin() { hideAllPanels(); document.getElementById('loginPanel').classList.remove('hidden'); }
-function showVerificationMessage(email) {
-    hideAllPanels();
-    document.getElementById('verificationMessagePanel').classList.remove('hidden');
-    document.getElementById('verificationEmailDisplay').textContent = email;
-}
-function showPaymentPanel(userName, userEmail) {
-    hideAllPanels();
-    document.getElementById('paymentPanel').classList.remove('hidden');
-    document.getElementById('paymentUserName').textContent = userName;
-    document.getElementById('paymentPanel').dataset.currentUserEmail = userEmail;
-}
-function showMainPlatform(userName) {
-    hideAllPanels();
-    document.getElementById('mainPlatformPanel').classList.remove('hidden');
-    document.getElementById('loggedInUserName').textContent = userName;
-    // Show rotation history for the logged-in user
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    if(currentUser && currentUser.email) {
-        displayUserRotationHistory(currentUser.email);
-    }
-}
-function showAdminLoginRegister() {
-    hideAllPanels();
-    document.getElementById('leaderLoginPanel').classList.remove('hidden');
-    document.getElementById('leaderRegisterPanel').classList.remove('hidden');
-}
-function showCEOLogin() { hideAllPanels(); document.getElementById('ceoLoginPanel').classList.remove('hidden'); }
-function showContactAdmin() { hideAllPanels(); document.getElementById('contactAdminPanel').classList.remove('hidden'); }
-function showCEOPanel() {
-    hideAllPanels();
-    document.getElementById('ceoPanel').classList.remove('hidden');
-    displayRotationHistory();
-    displayInscriptionHistory();
-}
+// Middleware
+app.use(bodyParser.json());
+app.use(cors()); // Enable CORS for all origins (for development)
 
-// --- Data Storage (Client-Side Simulation) ---
-const users = JSON.parse(localStorage.getItem('users')) || {};
-let admins = JSON.parse(localStorage.getItem('admins')) || {};
-const pendingPayments = JSON.parse(localStorage.getItem('pendingPayments')) || {};
-let adminMessages = JSON.parse(localStorage.getItem('adminMessages')) || {};
-let rotationSettings = JSON.parse(localStorage.getItem('rotationSettings')) || {
-    invest: 100, gain: 1000, currentDay: 0, lastPaidMemberIndex: -1
+// --- File Paths for Persistent Storage ---
+const DATA_DIR = path.join(__dirname, 'data');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
+const ROTATION_SETTINGS_FILE = path.join(DATA_DIR, 'rotationSettings.json');
+const ROTATION_PARTICIPANTS_FILE = path.join(DATA_DIR, 'rotationParticipants.json');
+const ROTATION_HISTORY_FILE = path.join(DATA_DIR, 'rotationHistory.json');
+const ADMIN_HISTORY_FILE = path.join(DATA_DIR, 'adminHistory.json');
+const REFERRAL_CODES_FILE = path.join(DATA_DIR, 'referralCodes.json');
+
+// --- In-memory Data Storage (will be loaded from/saved to files) ---
+let users = [];
+let messages = [];
+let rotationSettings = {
+    currentDay: 0,
+    invest: 10, // Default individual investment
+    lastPaidMemberIndex: -1 // Index of the last member who received payment
 };
-let activeRotationMembers = JSON.parse(localStorage.getItem('activeRotationMembers')) || [];
-let rotationHistory = JSON.parse(localStorage.getItem('rotationHistory')) || [];
+let rotationParticipants = []; // Users who are active in the rotation
+let rotationHistory = []; // History of rotation payouts
+let adminHistory = []; // History of admin actions
+let referralCodes = []; // Store generated referral codes
 
-// --- User Authentication (Sign Up & Login) ---
-document.getElementById('signUpForm').addEventListener('submit', function(event) {
-    event.preventDefault();
-    const fullName = document.getElementById('fullName').value.trim();
-    const phoneNumber = document.getElementById('phoneNumber').value.trim();
-    const email = document.getElementById('email').value.trim().toLowerCase();
-    const password = document.getElementById('password').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
-    const msg = document.getElementById('signUpMsg');
-    msg.classList.add('hidden');
-    if (!fullName || !phoneNumber || !email || !password || !confirmPassword) {
-        msg.textContent = '❌ Please fill in all fields.';
-        msg.classList.remove('hidden', 'success-msg');
-        msg.classList.add('error-msg'); return;
+// --- Helper Functions for File Operations ---
+async function ensureDataDirectory() {
+    try {
+        await fs.mkdir(DATA_DIR, { recursive: true });
+        console.log(`Data directory '${DATA_DIR}' ensured.`);
+    } catch (error) {
+        console.error(`Error ensuring data directory '${DATA_DIR}':`, error);
     }
-    if (password !== confirmPassword) {
-        msg.textContent = '❌ Passwords do not match.';
-        msg.classList.remove('hidden', 'success-msg');
-        msg.classList.add('error-msg'); return;
-    }
-    if (users[email]) {
-        msg.textContent = '❌ This email is already registered.';
-        msg.classList.remove('hidden', 'success-msg');
-        msg.classList.add('error-msg'); return;
-    }
-    users[email] = { fullName, phoneNumber, password, verified: false, paid: false };
-    localStorage.setItem('users', JSON.stringify(users));
-    msg.textContent = '✅ Sign up successful! Your account is automatically verified for this demo. Please proceed to login.';
-    msg.classList.remove('hidden', 'error-msg'); msg.classList.add('success-msg');
-    setTimeout(() => {
-        users[email].verified = true;
-        localStorage.setItem('users', JSON.stringify(users));
-        showVerificationMessage(email);
-    }, 1000);
-});
-
-document.getElementById('loginForm').addEventListener('submit', function(event) {
-    event.preventDefault();
-    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-    const password = document.getElementById('loginPassword').value;
-    const msg = document.getElementById('loginMsg');
-    msg.classList.add('hidden');
-    const user = users[email];
-    if (!user) {
-        msg.textContent = '❌ No account found with this email.'; msg.classList.remove('hidden', 'success-msg'); msg.classList.add('error-msg'); return;
-    }
-    if (!user.verified) {
-        msg.textContent = '❌ Please verify your email first.'; msg.classList.remove('hidden', 'success-msg'); msg.classList.add('error-msg'); return;
-    }
-    if (user.password !== password) {
-        msg.textContent = '❌ Incorrect password.'; msg.classList.remove('hidden', 'success-msg'); msg.classList.add('error-msg'); return;
-    }
-    localStorage.setItem('currentUser', JSON.stringify({ email: email, name: user.fullName, role: 'user' }));
-    if (user.paid) {
-        showMainPlatform(user.fullName);
-    } else {
-        showPaymentPanel(user.fullName, email);
-    }
-});
-function logoutUser() { localStorage.removeItem('currentUser'); showLogin(); }
-
-// --- Payment Logic ---
-function showPaymentInstructions(value) {
-    const allDivs = ['cashInfo', 'mastercardInfo', 'paypalInfo', 'moncashInfo', 'natcashInfo'];
-    allDivs.forEach(id => document.getElementById(id).classList.add('hidden'));
-    document.getElementById('paymentInstructions').style.display = 'block';
-    if(value && allDivs.includes(value + 'Info')) document.getElementById(value + 'Info').classList.remove('hidden');
-    else document.getElementById('paymentInstructions').style.display = 'none';
 }
 
-document.getElementById('paymentForm').addEventListener('submit', function(event) {
-    event.preventDefault();
-    const paymentMethod = document.getElementById('paymentMethod').value;
-    const currentUserEmail = document.getElementById('paymentPanel').dataset.currentUserEmail.toLowerCase();
-    const msg = document.getElementById('paymentMsg');
-    msg.classList.add('hidden');
-    if (!paymentMethod) {
-        msg.textContent = '❌ Please select a payment method.';
-        msg.classList.remove('hidden', 'success-msg'); msg.classList.add('error-msg'); return;
-    }
-    if (paymentMethod === 'cash') {
-        if (!pendingPayments[currentUserEmail]) {
-            const userName = users[currentUserEmail] ? users[currentUserEmail].fullName : 'Unknown User';
-            pendingPayments[currentUserEmail] = {
-                email: currentUserEmail, name: userName, method: 'Cash',
-                status: 'pending_leader_validation', timestamp: new Date().toLocaleString()
-            };
-            localStorage.setItem('pendingPayments', JSON.stringify(pendingPayments));
-            msg.textContent = '✅ Payment method submitted. A team leader will validate your cash payment soon.';
-            msg.classList.remove('hidden', 'error-msg'); msg.classList.add('success-msg');
-        } else {
-            msg.textContent = 'ℹ️ Your cash payment is already pending validation.';
-            msg.classList.remove('hidden', 'success-msg'); msg.classList.add('error-msg');
+async function readJsonFile(filePath, defaultValue) {
+    try {
+        const data = await fs.readFile(filePath, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        if (error.code === 'ENOENT') { // File not found
+            console.warn(`File not found: ${filePath}. Initializing with default value.`);
+            return defaultValue;
         }
-    } else {
-        const user = users[currentUserEmail];
-        if (user) {
-            user.paid = true;
-            localStorage.setItem('users', JSON.stringify(users));
-            localStorage.setItem('currentUser', JSON.stringify({ email: user.email, name: user.fullName, role: 'user' }));
-            if (!activeRotationMembers.includes(currentUserEmail)) {
-                activeRotationMembers.push(currentUserEmail);
-                localStorage.setItem('activeRotationMembers', JSON.stringify(activeRotationMembers));
-            }
-            msg.textContent = '✅ Payment successful! Redirecting to platform...';
-            msg.classList.remove('hidden', 'error-msg'); msg.classList.add('success-msg');
-            setTimeout(() => showMainPlatform(user.fullName), 1500);
-        }
+        console.error(`Error reading file ${filePath}:`, error);
+        return defaultValue;
     }
-});
+}
 
-// --- User Message System ---
-document.getElementById('contactAdminForm').addEventListener('submit', function(event) {
-    const email = document.getElementById('contactEmail').value.trim().toLowerCase();
-    const subject = document.getElementById('contactSubject').value.trim();
-    const messageText = document.getElementById('contactMessage').value.trim();
-    const msg = document.getElementById('contactAdminMsg');
-    msg.classList.add('hidden');
-    if (!email || !subject || !messageText) {
-        msg.textContent = '❌ Please fill in all fields.';
-        msg.classList.remove('hidden', 'success-msg'); msg.classList.add('error-msg'); return;
+async function writeJsonFile(filePath, data) {
+    try {
+        await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+        console.log(`Data successfully written to ${filePath}`);
+    } catch (error) {
+        console.error(`Error writing to file ${filePath}:`, error);
     }
-    const messageId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
-    adminMessages[messageId] = {
-        id: messageId, fromEmail: email, subject, message: messageText,
-        timestamp: new Date().toLocaleString(), status: 'unread'
-    };
-    localStorage.setItem('adminMessages', JSON.stringify(adminMessages));
-    msg.textContent = '✅ Your message has been sent to support!';
-    msg.classList.remove('hidden', 'error-msg'); msg.classList.add('success-msg');
-    document.getElementById('contactEmail').value = '';
-    document.getElementById('contactSubject').value = '';
-    document.getElementById('contactMessage').value = '';
-    setTimeout(() => msg.classList.add('hidden'), 3000);
-});
+}
 
-// --- Admin (Team Leader / CEO) Logic ---
-document.getElementById('leaderLoginForm').addEventListener('submit', function(event) {
-    event.preventDefault(); loginLeader();
-});
-function registerLeader() {
-    const name = document.getElementById('leaderName').value.trim();
-    const email = document.getElementById('leaderEmailReg').value.trim().toLowerCase();
-    const pass1 = document.getElementById('leaderPass1').value;
-    const pass2 = document.getElementById('leaderPass2').value;
-    const msg = document.getElementById('leaderRegisterMsg');
-    if(!name || !email || !pass1 || !pass2) { msg.textContent = '❌ Please fill all fields'; msg.className = 'error-msg'; return; }
-    if(pass1 !== pass2) { msg.textContent = '❌ Passwords do not match'; msg.className = 'error-msg'; return; }
-    if (admins[email]) { msg.textContent = '❌ This email is already registered as an admin.'; msg.className = 'error-msg'; return; }
-    admins[email] = { name, email, password: pass1, role: 'leader' };
-    localStorage.setItem('admins', JSON.stringify(admins));
-    msg.textContent = '✅ Registration successful. You can now login as a Leader.'; msg.className = 'success-msg';
-    document.getElementById('leaderName').value = '';
-    document.getElementById('leaderEmailReg').value = '';
-    document.getElementById('leaderPass1').value = '';
-    document.getElementById('leaderPass2').value = '';
+// --- Load Data on Server Start-up ---
+async function loadAllData() {
+    await ensureDataDirectory();
+    users = await readJsonFile(USERS_FILE, []);
+    messages = await readJsonFile(MESSAGES_FILE, []);
+    rotationSettings = await readJsonFile(ROTATION_SETTINGS_FILE, { currentDay: 0, invest: 10, lastPaidMemberIndex: -1 });
+    rotationParticipants = await readJsonFile(ROTATION_PARTICIPANTS_FILE, []);
+    rotationHistory = await readJsonFile(ROTATION_HISTORY_FILE, []);
+    adminHistory = await readJsonFile(ADMIN_HISTORY_FILE, []);
+    referralCodes = await readJsonFile(REFERRAL_CODES_FILE, []);
+    console.log('All data loaded from files.');
+    // Ensure admin user exists for initial access
+    ensureInitialAdmin();
 }
-function loginLeader() {
-    const email = document.getElementById('loginLeaderEmail').value.trim().toLowerCase();
-    const pass = document.getElementById('loginLeaderPass').value;
-    const msg = document.getElementById('leaderLoginMsg');
-    const stored = admins[email];
-    if(!stored || stored.role !== 'leader') { msg.textContent = '❌ No leader account found with this email.'; msg.className = 'error-msg'; return; }
-    if(stored.password !== pass) { msg.textContent = '❌ Incorrect password.'; msg.className = 'error-msg'; return; }
-    localStorage.setItem('currentAdmin', JSON.stringify({ email: stored.email, name: stored.name, role: stored.role }));
-    hideAllPanels();
-    document.getElementById('leaderPanel').classList.remove('hidden');
-    document.getElementById('leaderNameDisplay').textContent = stored.name;
-    loadPendingPayments();
-    loadRotationSettings();
-    loadAvailableMembersForRotation();
-    displayRotationParticipants();
-    loadUserMessages();
-}
-function logoutLeader() { localStorage.removeItem('currentAdmin'); showLogin(); }
-function loadPendingPayments() {
-    const list = document.getElementById('pendingPaymentsList');
-    list.innerHTML = '';
-    let hasPending = false;
-    for (const email in pendingPayments) {
-        const payment = pendingPayments[email];
-        if (payment.status === 'pending_leader_validation') {
-            hasPending = true;
-            const userDisplayName = users[email] ? users[email].fullName : 'Unknown User';
-            const listItem = document.createElement('li');
-            listItem.innerHTML = `
-                <strong>${userDisplayName}</strong> (${payment.email}) - Method: ${payment.method} - Submitted: ${payment.timestamp}
-                <div>
-                    <button style="background-color: #28a745;" onclick="validatePayment('${email}')">Validate</button>
-                    <button style="background-color: #dc3545; margin-left: 5px;" onclick="rejectPayment('${email}')">Reject</button>
-                </div>
-            `;
-            list.appendChild(listItem);
-        }
-    }
-    document.getElementById('noPendingPayments').classList.toggle('hidden', hasPending);
-}
-function validatePayment(email) {
-    email = email.toLowerCase();
-    if (users[email]) {
-        users[email].paid = true;
-        localStorage.setItem('users', JSON.stringify(users));
-        delete pendingPayments[email];
-        localStorage.setItem('pendingPayments', JSON.stringify(pendingPayments));
-        if (!activeRotationMembers.includes(email)) {
-            activeRotationMembers.push(email);
-            localStorage.setItem('activeRotationMembers', JSON.stringify(activeRotationMembers));
-            alert(`Payment for ${users[email].fullName} (${email}) validated! User has been added to rotation and now has full access.`);
-        } else {
-            alert(`Payment for ${users[email].fullName} (${email}) validated! User already in rotation. User now has full access.`);
-        }
-        loadPendingPayments();
-        loadAvailableMembersForRotation();
-        displayRotationParticipants();
-    } else {
-        alert(`Error: User with email ${email} not found. Please ensure the user has registered. If not, reject this payment.`);
+
+// --- Ensure Initial Admin User ---
+function ensureInitialAdmin() {
+    const adminEmail = 'admin@dream2build.com';
+    const adminPassword = 'adminpassword'; // In a real app, hash this!
+    if (!users.find(user => user.email === adminEmail && user.role === 'ceo')) {
+        const newAdmin = {
+            id: uuidv4(),
+            firstName: 'Super',
+            lastName: 'Admin',
+            fullName: 'Super Admin',
+            phoneNumber: '+1234567890',
+            email: adminEmail,
+            password: adminPassword, // Plain text for demo, HASH IN PRODUCTION!
+            role: 'ceo', // 'ceo' or 'leader'
+            adminLevel: 'superAdmin', // 'superAdmin' for CEO, 'teamLeader' for leader
+            isPaid: true, // Admins are considered paid
+            status: 'active', // 'active' or 'inactive'
+            referralCode: null,
+            referredBy: null,
+            invest: 0, // Admins don't participate in rotation as users
+            gain: 0,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString()
+        };
+        users.push(newAdmin);
+        writeJsonFile(USERS_FILE, users);
+        console.log('Initial CEO admin user created.');
+        addAdminHistory('System', 'Initial CEO Admin Created', { email: adminEmail });
     }
 }
-function rejectPayment(email) {
-    email = email.toLowerCase();
-    if (users[email] || pendingPayments[email]) {
-        delete pendingPayments[email];
-        localStorage.setItem('pendingPayments', JSON.stringify(pendingPayments));
-        alert(`Payment for ${users[email]?.fullName || email} rejected. User needs to resubmit.`);
-        loadPendingPayments();
-    }
-}
-function loadUserMessages() {
-    const list = document.getElementById('userMessagesList');
-    list.innerHTML = '';
-    let unreadCount = 0;
-    let hasMessages = false;
-    const messagesArray = Object.values(adminMessages).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    messagesArray.forEach(message => {
-        hasMessages = true;
-        if (message.status === 'unread') unreadCount++;
-        const listItem = document.createElement('li');
-        listItem.classList.toggle('unread', message.status === 'unread');
-        listItem.innerHTML = `
-            <strong>From:</strong> ${message.fromEmail}<br>
-            <strong>Subject:</strong> ${message.subject}<br>
-            <strong>Message:</strong> ${message.message}<br>
-            <small><em>Sent: ${message.timestamp} - Status: ${message.status.toUpperCase()}</em></small><br>
-            <button style="margin-top: 5px; background-color: #007bff; font-size: 0.9em; padding: 5px 10px;" onclick="markMessageAsRead('${message.id}')">Mark as Read</button>
-            <button style="margin-top: 5px; background-color: #dc3545; font-size: 0.9em; padding: 5px 10px; margin-left: 5px;" onclick="deleteMessage('${message.id}')">Delete</button>
-        `;
-        list.appendChild(listItem);
+
+// --- Admin History Logging ---
+async function addAdminHistory(actor, type, details) {
+    adminHistory.push({
+        id: uuidv4(),
+        timestamp: new Date().toISOString(),
+        actor: actor, // e.g., "System", "Admin User ID/Email"
+        type: type, // e.g., "User Status Change", "Payment Validation", "Rotation Event"
+        description: `${actor} performed: ${type}`,
+        details: details
     });
-    document.getElementById('unreadMessageCount').textContent = `(${unreadCount} unread)`;
-    document.getElementById('noUserMessages').classList.toggle('hidden', hasMessages);
-}
-function markMessageAsRead(messageId) {
-    if (adminMessages[messageId]) {
-        adminMessages[messageId].status = 'read';
-        localStorage.setItem('adminMessages', JSON.stringify(adminMessages));
-        loadUserMessages();
-    }
-}
-function deleteMessage(messageId) {
-    if (confirm('Are you sure you want to delete this message?')) {
-        delete adminMessages[messageId];
-        localStorage.setItem('adminMessages', JSON.stringify(adminMessages));
-        loadUserMessages();
-    }
+    await writeJsonFile(ADMIN_HISTORY_FILE, adminHistory);
 }
 
-// CEO Login Logic
-document.getElementById('ceoLoginForm').addEventListener('submit', function(event) {
-    event.preventDefault();
-    const email = document.getElementById('ceoLoginEmail').value.trim().toLowerCase();
-    const password = document.getElementById('ceoLoginPassword').value;
-    const msg = document.getElementById('ceoLoginMsg');
-    msg.classList.add('hidden');
-    const ceoAccount = admins[email];
-    if (!ceoAccount || ceoAccount.role !== 'ceo') {
-        msg.textContent = '❌ No CEO account found with this email.'; msg.classList.remove('hidden', 'success-msg'); msg.classList.add('error-msg'); return;
+
+// --- JWT Authentication Middleware ---
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token == null) return res.sendStatus(401); // No token
+
+    jwt.verify(token, SECRET_KEY, (err, user) => {
+        if (err) return res.sendStatus(403); // Invalid token
+        req.user = user; // Attach user payload to request
+        next();
+    });
+};
+
+// --- Authorization Middleware ---
+const authorizeRole = (roles) => {
+    return (req, res, next) => {
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({ message: 'Access denied: Insufficient permissions.' });
+        }
+        next();
+    };
+};
+
+// --- API Endpoints ---
+
+// User Signup
+app.post('/api/signup', async (req, res) => {
+    const { firstName, lastName, phoneNumber, email, password, referralCode } = req.body;
+
+    if (!firstName || !lastName || !phoneNumber || !email || !password) {
+        return res.status(400).json({ message: 'All fields are required.' });
     }
-    if (ceoAccount.password !== password) {
-        msg.textContent = '❌ Incorrect password.'; msg.classList.remove('hidden', 'success-msg'); msg.classList.add('error-msg'); return;
+    if (users.some(user => user.email === email)) {
+        return res.status(409).json({ message: 'Email already registered.' });
     }
-    localStorage.setItem('currentAdmin', JSON.stringify({ email: ceoAccount.email, name: ceoAccount.name, role: ceoAccount.role }));
-    showCEOPanel();
-    msg.textContent = '';
-    document.getElementById('ceoLoginEmail').value = '';
-    document.getElementById('ceoLoginPassword').value = '';
+
+    let referredBy = null;
+    if (referralCode) {
+        const existingReferral = referralCodes.find(code => code.code === referralCode && code.isActive);
+        if (existingReferral) {
+            referredBy = existingReferral.generatedBy; // Store the ID of the user who generated the code
+            // Optionally, deactivate referral code after use or limit uses
+            // existingReferral.isActive = false;
+            // await writeJsonFile(REFERRAL_CODES_FILE, referralCodes);
+        } else {
+            return res.status(400).json({ message: 'Invalid or inactive referral code.' });
+        }
+    }
+
+    const newUser = {
+        id: uuidv4(),
+        firstName,
+        lastName,
+        fullName: `${firstName} ${lastName}`,
+        phoneNumber,
+        email,
+        password, // In a real app, HASH this password!
+        role: 'user', // Default role
+        isPaid: false, // User is unpaid by default
+        status: 'pending', // 'pending', 'active', 'inactive'
+        referralCode: null, // User referral code generated later
+        referredBy: referredBy,
+        invest: 0, // Initial investment amount
+        gain: 0, // Initial gain amount
+        createdAt: new Date().toISOString(),
+        lastLogin: null
+    };
+    users.push(newUser);
+    await writeJsonFile(USERS_FILE, users);
+    console.log(`New user signed up: ${newUser.email}`);
+    addAdminHistory('System', 'New User Signup', { email: newUser.email, role: newUser.role });
+    res.status(201).json({ message: 'User registered successfully. Pending payment.' });
 });
-function logoutCEO() { localStorage.removeItem('currentAdmin'); showLogin(); }
 
-// --- Rotation Management Logic ---
-function loadRotationSettings() {
-    document.getElementById('dailyInvest').value = rotationSettings.invest;
-    document.getElementById('dailyGain').value = rotationSettings.gain;
-    document.getElementById('currentRotationDay').textContent = rotationSettings.currentDay;
-}
-function saveRotationSettings() {
-    const invest = parseFloat(document.getElementById('dailyInvest').value);
-    const gain = parseFloat(document.getElementById('dailyGain').value);
-    const msg = document.getElementById('rotationSettingsMsg');
-    msg.classList.add('hidden');
-    if (isNaN(invest) || isNaN(gain) || invest < 0 || gain < 0) {
-        msg.textContent = '❌ Please enter valid numbers for Invest and Gain.';
-        msg.classList.remove('hidden', 'success-msg'); msg.classList.add('error-msg'); return;
+// User Login
+app.post('/api/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    const user = users.find(u => u.email === email && u.password === password); // In production, compare hashed passwords
+
+    if (!user) {
+        return res.status(401).json({ message: 'Invalid credentials.' });
+    }
+
+    // Update last login timestamp
+    user.lastLogin = new Date().toISOString();
+    await writeJsonFile(USERS_FILE, users);
+
+    const token = jwt.sign({ id: user.id, email: user.email, role: user.role, adminLevel: user.adminLevel }, SECRET_KEY, { expiresIn: '1h' }); // Token expires in 1 hour
+
+    console.log(`User logged in: ${user.email}, Role: ${user.role}`);
+    addAdminHistory(user.email, 'User Login', { email: user.email, role: user.role });
+
+    res.json({
+        message: 'Login successful!',
+        token,
+        user: {
+            id: user.id,
+            fullName: user.fullName,
+            email: user.email,
+            role: user.role,
+            adminLevel: user.adminLevel || null,
+            paid: user.isPaid,
+            status: user.status,
+            invest: user.invest,
+            gain: user.gain,
+            referralCode: user.referralCode
+        }
+    });
+});
+
+// Token Verification Endpoint (for frontend to check session persistence)
+app.post('/api/auth/verify-token', authenticateToken, (req, res) => {
+    // If we reach here, the token is valid, and req.user contains the decoded payload
+    const user = users.find(u => u.id === req.user.id);
+    if (!user) {
+        return res.status(404).json({ message: 'User not found.' });
+    }
+    res.json({
+        message: 'Token is valid.',
+        user: {
+            id: user.id,
+            fullName: user.fullName,
+            email: user.email,
+            role: user.role,
+            adminLevel: user.adminLevel || null,
+            paid: user.isPaid,
+            status: user.status,
+            invest: user.invest,
+            gain: user.gain,
+            referralCode: user.referralCode
+        }
+    });
+});
+
+
+// --- Payment Endpoints (Leader/Admin controlled) ---
+
+// Submit Payment Info (by User)
+app.post('/api/payments/submit', authenticateToken, authorizeRole(['user']), async (req, res) => {
+    const { email, method } = req.body;
+    const user = users.find(u => u.email === email);
+
+    if (!user) {
+        return res.status(404).json({ message: 'User not found.' });
+    }
+    if (user.isPaid) {
+        return res.status(400).json({ message: 'User has already paid.' });
+    }
+
+    messages.push({
+        id: uuidv4(),
+        fromEmail: email,
+        subject: 'Payment Submission',
+        message: `User ${user.fullName} (${email}) submitted payment via ${method}. Awaiting validation.`,
+        timestamp: new Date().toISOString(),
+        type: 'payment_submission',
+        status: 'unread'
+    });
+    await writeJsonFile(MESSAGES_FILE, messages);
+    addAdminHistory(user.email, 'Payment Submitted', { email: user.email, method });
+    res.status(200).json({ message: `Payment method '${method}' submitted for validation.` });
+});
+
+// Get Pending Payments (for Leader)
+app.get('/api/payments/pending', authenticateToken, authorizeRole(['leader', 'ceo']), (req, res) => {
+    const pendingPaymentUsers = users.filter(user => !user.isPaid && user.status === 'pending');
+    const simplifiedPendingPayments = pendingPaymentUsers.map(user => ({
+        userName: user.fullName,
+        userEmail: user.email,
+        method: 'Cash', // Assuming cash for pending, as other methods would be auto-validated
+        timestamp: user.createdAt // Use signup time as submission time for cash
+    }));
+    res.json(simplifiedPendingPayments);
+});
+
+// Validate Payment (by Leader)
+app.put('/api/payments/validate/:email', authenticateToken, authorizeRole(['leader', 'ceo']), async (req, res) => {
+    const { email } = req.params;
+    const user = users.find(u => u.email === email);
+
+    if (!user) {
+        return res.status(404).json({ message: 'User not found.' });
+    }
+    if (user.isPaid && user.status === 'active') {
+        return res.status(400).json({ message: 'User is already paid and active.' });
+    }
+
+    user.isPaid = true;
+    user.status = 'active'; // Activate user upon payment validation
+    await writeJsonFile(USERS_FILE, users);
+    addAdminHistory(req.user.email, 'Payment Validated', { email: user.email, validatedBy: req.user.email });
+    res.status(200).json({ message: `Payment for ${email} validated. User activated.` });
+});
+
+// Reject Payment (by Leader)
+app.put('/api/payments/reject/:email', authenticateToken, authorizeRole(['leader', 'ceo']), async (req, res) => {
+    const { email } = req.params;
+    const user = users.find(u => u.email === email);
+
+    if (!user) {
+        return res.status(404).json({ message: 'User not found.' });
+    }
+    if (user.isPaid) {
+        return res.status(400).json({ message: 'Cannot reject payment for an already paid user.' });
+    }
+
+    user.status = 'inactive'; // Mark user as inactive if payment rejected
+    await writeJsonFile(USERS_FILE, users);
+    addAdminHistory(req.user.email, 'Payment Rejected', { email: user.email, rejectedBy: req.user.email });
+    res.status(200).json({ message: `Payment for ${email} rejected. User marked inactive.` });
+});
+
+
+// --- User Message Endpoints (Admin controlled) ---
+
+// Send Message (from User to Admin)
+app.post('/api/messages/send', async (req, res) => {
+    const { fromEmail, subject, message } = req.body;
+    if (!fromEmail || !subject || !message) {
+        return res.status(400).json({ message: 'All message fields are required.' });
+    }
+
+    messages.push({
+        id: uuidv4(),
+        fromEmail,
+        subject,
+        message,
+        timestamp: new Date().toISOString(),
+        status: 'unread' // New messages are unread by default
+    });
+    await writeJsonFile(MESSAGES_FILE, messages);
+    addAdminHistory(fromEmail, 'Message Sent to Admin', { subject, fromEmail });
+    res.status(201).json({ message: 'Message sent successfully.' });
+});
+
+// Get All Messages (for Admin)
+app.get('/api/messages', authenticateToken, authorizeRole(['leader', 'ceo']), (req, res) => {
+    res.json(messages);
+});
+
+// Mark Message as Read (by Admin)
+app.put('/api/messages/:id/read', authenticateToken, authorizeRole(['leader', 'ceo']), async (req, res) => {
+    const { id } = req.params;
+    const message = messages.find(msg => msg.id === id);
+
+    if (!message) {
+        return res.status(404).json({ message: 'Message not found.' });
+    }
+    message.status = 'read';
+    await writeJsonFile(MESSAGES_FILE, messages);
+    addAdminHistory(req.user.email, 'Message Marked Read', { messageId: id, from: message.fromEmail });
+    res.status(200).json({ message: 'Message marked as read.' });
+});
+
+// Delete Message (by Admin)
+app.delete('/api/messages/:id', authenticateToken, authorizeRole(['leader', 'ceo']), async (req, res) => {
+    const { id } = req.params;
+    const initialLength = messages.length;
+    messages = messages.filter(msg => msg.id !== id);
+
+    if (messages.length === initialLength) {
+        return res.status(404).json({ message: 'Message not found.' });
+    }
+    await writeJsonFile(MESSAGES_FILE, messages);
+    addAdminHistory(req.user.email, 'Message Deleted', { messageId: id });
+    res.status(200).json({ message: 'Message deleted successfully.' });
+});
+
+
+// --- Rotation Management Endpoints (Leader/Admin controlled) ---
+
+// Get Rotation Settings
+app.get('/api/rotation/settings', authenticateToken, authorizeRole(['leader', 'ceo']), (req, res) => {
+    res.json(rotationSettings);
+});
+
+// Update Rotation Settings
+app.put('/api/rotation/settings', authenticateToken, authorizeRole(['leader', 'ceo']), async (req, res) => {
+    const { invest } = req.body;
+    if (typeof invest !== 'number' || invest < 0) {
+        return res.status(400).json({ message: 'Investment amount must be a non-negative number.' });
     }
     rotationSettings.invest = invest;
-    rotationSettings.gain = gain;
-    localStorage.setItem('rotationSettings', JSON.stringify(rotationSettings));
-    msg.textContent = '✅ Rotation settings updated!';
-    msg.classList.remove('hidden', 'error-msg'); msg.classList.add('success-msg');
-    setTimeout(() => msg.classList.add('hidden'), 2000);
-}
-function loadAvailableMembersForRotation() {
-    const select = document.getElementById('availableMembersSelect');
-    select.innerHTML = '<option value="">-- Select Paid Member --</option>';
-    for (const email in users) {
-        const user = users[email];
-        if (user.verified && user.paid && !activeRotationMembers.includes(email)) {
-            const option = document.createElement('option');
-            option.value = email; option.textContent = `${user.fullName} (${user.email})`;
-            select.appendChild(option);
-        }
+    await writeJsonFile(ROTATION_SETTINGS_FILE, rotationSettings);
+    addAdminHistory(req.user.email, 'Rotation Settings Updated', { newInvestment: invest });
+    res.status(200).json({ message: 'Rotation settings updated successfully.' });
+});
+
+// Get Paid & Active Users Not Yet in Rotation
+app.get('/api/users/paid-not-in-rotation', authenticateToken, authorizeRole(['leader', 'ceo']), (req, res) => {
+    const paidActiveUsers = users.filter(user =>
+        user.role === 'user' &&
+        user.isPaid &&
+        user.status === 'active' &&
+        !rotationParticipants.some(p => p.id === user.id)
+    );
+    res.json(paidActiveUsers.map(u => ({ id: u.id, fullName: u.fullName, email: u.email })));
+});
+
+
+// Add Participant to Rotation
+app.post('/api/rotation/add-participant', authenticateToken, authorizeRole(['leader', 'ceo']), async (req, res) => {
+    const { email } = req.body;
+    const userToAdd = users.find(u => u.email === email && u.role === 'user' && u.isPaid && u.status === 'active');
+
+    if (!userToAdd) {
+        return res.status(404).json({ message: 'User not found or not eligible for rotation (must be paid and active).' });
     }
-    document.getElementById('noActiveParticipants').classList.toggle('hidden', select.options.length > 1 || activeRotationMembers.length > 0);
-}
-function addParticipantToRotation() {
-    const select = document.getElementById('availableMembersSelect');
-    const emailToAdd = select.value;
-    const msg = document.getElementById('addParticipantMsg');
-    msg.classList.add('hidden');
-    if (!emailToAdd) {
-        msg.textContent = '❌ Please select a member to add.';
-        msg.classList.remove('hidden', 'success-msg'); msg.classList.add('error-msg'); return;
+    if (rotationParticipants.some(p => p.id === userToAdd.id)) {
+        return res.status(409).json({ message: 'User is already in the rotation.' });
     }
-    if (activeRotationMembers.includes(emailToAdd)) {
-        msg.textContent = 'ℹ️ This member is already in the rotation.';
-        msg.classList.remove('hidden', 'success-msg'); msg.classList.add('error-msg'); return;
+
+    rotationParticipants.push({ id: userToAdd.id, email: userToAdd.email, fullName: userToAdd.fullName });
+    await writeJsonFile(ROTATION_PARTICIPANTS_FILE, rotationParticipants);
+    addAdminHistory(req.user.email, 'Participant Added to Rotation', { email: userToAdd.email });
+    res.status(200).json({ message: `${userToAdd.fullName} added to rotation.` });
+});
+
+// Get Current Rotation Participants
+app.get('/api/rotation/participants', authenticateToken, authorizeRole(['leader', 'ceo']), (req, res) => {
+    res.json(rotationParticipants);
+});
+
+// Move to Next Participant in Rotation (Perform Payout)
+app.post('/api/rotation/next', authenticateToken, authorizeRole(['leader', 'ceo']), async (req, res) => {
+    if (rotationParticipants.length === 0) {
+        return res.status(400).json({ message: 'No participants in rotation. Add members first.' });
     }
-    activeRotationMembers.push(emailToAdd);
-    localStorage.setItem('activeRotationMembers', JSON.stringify(activeRotationMembers));
-    msg.textContent = `✅ ${users[emailToAdd].fullName} added to rotation!`;
-    msg.classList.remove('hidden', 'error-msg'); msg.classList.add('success-msg');
-    setTimeout(() => msg.classList.add('hidden'), 2000);
-    loadAvailableMembersForRotation();
-    displayRotationParticipants();
-}
-function displayRotationParticipants() {
-    const list = document.getElementById('rotationParticipantsList');
-    list.innerHTML = '';
-    let hasParticipants = false;
-    if (activeRotationMembers.length > 0) {
-        hasParticipants = true;
-        activeRotationMembers.forEach((email, index) => {
-            const userFullName = users[email]?.fullName || 'Unknown User';
-            const listItem = document.createElement('li');
-            listItem.textContent = `${userFullName} (${email})`;
-            if (index === rotationSettings.lastPaidMemberIndex) {
-                listItem.classList.add('current-recipient');
-                listItem.title = "Last member who received payment";
-            }
-            list.appendChild(listItem);
-        });
+
+    const nextIndex = (rotationSettings.lastPaidMemberIndex + 1) % rotationParticipants.length;
+    const currentRecipientInfo = rotationParticipants[nextIndex];
+    const currentRecipientUser = users.find(u => u.id === currentRecipientInfo.id);
+
+    if (!currentRecipientUser) {
+        // This should ideally not happen if data is consistent, but good to check
+        return res.status(500).json({ message: 'Current recipient user data not found. Data inconsistency.' });
     }
-    document.getElementById('noActiveParticipants').classList.toggle('hidden', hasParticipants);
-}
-function nextParticipant() {
-    const msg = document.getElementById('rotationStatusMsg');
-    msg.classList.add('hidden');
-    if (activeRotationMembers.length === 0) {
-        msg.textContent = '❌ No participants in rotation. Add members first.';
-        msg.classList.remove('hidden', 'success-msg'); msg.classList.add('error-msg'); return;
-    }
-    let nextIndex = (rotationSettings.lastPaidMemberIndex + 1) % activeRotationMembers.length;
-    const recipientEmail = activeRotationMembers[nextIndex];
-    const recipientName = users[recipientEmail]?.fullName || 'Unknown';
-    rotationSettings.currentDay++;
+
+    const totalPool = rotationParticipants.length * rotationSettings.invest;
+    const winnerGain = totalPool; // Simple model: winner gets the entire pool
+
+    // Update recipient's gain and investment
+    currentRecipientUser.gain += winnerGain;
+    currentRecipientUser.invest += rotationSettings.invest; // Increment their investment for the current cycle
+
+    // Update rotation settings
+    rotationSettings.currentDay += 1;
     rotationSettings.lastPaidMemberIndex = nextIndex;
-    localStorage.setItem('rotationSettings', JSON.stringify(rotationSettings));
+
+    // Log to rotation history
     rotationHistory.push({
-        day: rotationSettings.currentDay, recipientEmail, recipientName,
-        invest: rotationSettings.invest, gain: rotationSettings.gain,
-        timestamp: new Date().toLocaleString()
+        id: uuidv4(),
+        day: rotationSettings.currentDay,
+        recipientId: currentRecipientUser.id,
+        recipientName: currentRecipientUser.fullName,
+        recipientEmail: currentRecipientUser.email,
+        invest: rotationSettings.invest,
+        totalPool: totalPool,
+        gain: winnerGain,
+        timestamp: new Date().toISOString()
     });
-    if (rotationHistory.length > 25) rotationHistory.shift();
-    localStorage.setItem('rotationHistory', JSON.stringify(rotationHistory));
-    msg.textContent = `✅ Day ${rotationSettings.currentDay}: ${recipientName} (${recipientEmail}) is the next recipient! Gain: $${rotationSettings.gain.toFixed(2)}`;
-    msg.classList.remove('hidden', 'error-msg'); msg.classList.add('success-msg');
-    setTimeout(() => msg.classList.add('hidden'), 3000);
-    loadRotationSettings();
-    displayRotationParticipants();
-    displayRotationHistory();
-}
 
-// --- CEO Specific Functions ---
-function displayRotationHistory() {
-    const tableBody = document.querySelector('#ceoRotationHistoryTable tbody');
-    tableBody.innerHTML = '';
-    const noHistoryMsg = document.getElementById('noRotationHistory');
-    if (rotationHistory.length === 0) {
-        noHistoryMsg.classList.remove('hidden'); return;
-    } else { noHistoryMsg.classList.add('hidden'); }
-    [...rotationHistory].reverse().forEach(entry => {
-        const row = tableBody.insertRow();
-        row.insertCell().textContent = entry.day;
-        row.insertCell().textContent = `${entry.recipientName} (${entry.recipientEmail})`;
-        row.insertCell().textContent = entry.invest.toFixed(2);
-        row.insertCell().textContent = entry.gain.toFixed(2);
-        row.insertCell().textContent = entry.timestamp;
+    // Save all affected data
+    await writeJsonFile(USERS_FILE, users); // Update user's invest/gain
+    await writeJsonFile(ROTATION_SETTINGS_FILE, rotationSettings);
+    await writeJsonFile(ROTATION_HISTORY_FILE, rotationHistory);
+    addAdminHistory(req.user.email, 'Rotation Advanced', {
+        day: rotationSettings.currentDay,
+        recipient: currentRecipientUser.email,
+        gain: winnerGain
     });
-}
 
-// --- User Dashboard: Rotation History ---
-function displayUserRotationHistory(currentUserEmail) {
-    const tableBody = document.querySelector('#userRotationHistoryTable tbody');
-    tableBody.innerHTML = '';
-    const noHistoryMsg = document.getElementById('noUserRotationHistory');
-    // Show entries where recipient is the current user
-    const filtered = rotationHistory.filter(entry => entry.recipientEmail === currentUserEmail);
-    if (filtered.length === 0) {
-        noHistoryMsg.classList.remove('hidden');
-        return;
-    } else {
-        noHistoryMsg.classList.add('hidden');
-    }
-    filtered.reverse().forEach(entry => {
-        const row = tableBody.insertRow();
-        row.insertCell().textContent = entry.day;
-        row.insertCell().textContent = `${entry.recipientName} (${entry.recipientEmail})`;
-        row.insertCell().textContent = entry.invest.toFixed(2);
-        row.insertCell().textContent = entry.gain.toFixed(2);
-        row.insertCell().textContent = entry.timestamp;
+    res.status(200).json({
+        message: `Rotation advanced to ${currentRecipientUser.fullName}. They gained $${winnerGain.toFixed(2)}.`,
+        currentRecipient: {
+            id: currentRecipientUser.id,
+            fullName: currentRecipientUser.fullName,
+            email: currentRecipientUser.email
+        },
+        winnerGain: winnerGain
     });
-}
+});
 
-// --- CEO Dashboard: All Users/Leaders History ---
-function displayInscriptionHistory() {
-    const tableBody = document.querySelector('#inscriptionHistoryTable tbody');
-    tableBody.innerHTML = '';
-    // Show all users
-    for (const email in users) {
-        const user = users[email];
-        const row = tableBody.insertRow();
-        row.insertCell().textContent = user.fullName;
-        row.insertCell().textContent = email;
-        row.insertCell().textContent = "User";
-        row.insertCell().textContent = user.verified ? "Yes" : "No";
-        row.insertCell().textContent = user.paid ? "Yes" : "No";
-        // Gain can be calculated based on rotationHistory, for now just show total gain received
-        const totalGain = rotationHistory.filter(e => e.recipientEmail === email)
-                                         .reduce((sum, e) => sum + (e.gain || 0), 0);
-        row.insertCell().textContent = '$' + totalGain.toFixed(2);
-    }
-    // Show all leaders
-    for (const email in admins) {
-        const admin = admins[email];
-        const row = tableBody.insertRow();
-        row.insertCell().textContent = admin.name;
-        row.insertCell().textContent = email;
-        row.insertCell().textContent = admin.role.charAt(0).toUpperCase() + admin.role.slice(1);
-        row.insertCell().textContent = "Yes";
-        row.insertCell().textContent = "-";
-        row.insertCell().textContent = "-";
-    }
-}
+// Get Rotation History (for CEO)
+app.get('/api/rotation/history', authenticateToken, authorizeRole(['ceo']), (req, res) => {
+    res.json(rotationHistory);
+});
 
-function calculRotation() {
-    const msg = document.getElementById('ceoReportMsg');
-    msg.textContent = 'This button can be expanded to generate more complex reports (e.g., total funds, financial projections). For now, view the history above.';
-    msg.classList.remove('hidden');
-    msg.classList.remove('success-msg');
-    msg.classList.add('error-msg');
-    setTimeout(() => msg.classList.add('hidden'), 4000);
-}
 
-// --- Initial Load Logic ---
-window.onload = function() {
-    // Ensure a default CEO account exists for demo purposes
-    if (!admins['ceo@dream2build.com'] || admins['ceo@dream2build.com'].role !== 'ceo') {
-        admins['ceo@dream2build.com'] = { name: 'CEO Admin', email: 'ceo@dream2build.com', password: 'admin123', role: 'ceo' };
-        localStorage.setItem('admins', JSON.stringify(admins));
-        console.log("Default CEO account created: ceo@dream2build.com / admin123");
+// --- Admin User Management Endpoints (Leader/CEO controlled) ---
+
+// Get All Users (for Admin)
+app.get('/api/admin/users', authenticateToken, authorizeRole(['leader', 'ceo']), (req, res) => {
+    // Return a simplified list of users for admin view
+    const adminViewUsers = users.map(user => ({
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        adminLevel: user.adminLevel || null,
+        isPaid: user.isPaid,
+        status: user.status
+    }));
+    res.json(adminViewUsers);
+});
+
+// Update User Status (Activate/Deactivate)
+app.put('/api/admin/user/:id/status', authenticateToken, authorizeRole(['leader', 'ceo']), async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body; // 'active' or 'inactive'
+
+    const userToUpdate = users.find(u => u.id === id);
+
+    if (!userToUpdate) {
+        return res.status(404).json({ message: 'User not found.' });
     }
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    const currentAdmin = JSON.parse(localStorage.getItem('currentAdmin'));
-    if (currentUser && currentUser.role === 'user') {
-        const user = users[currentUser.email];
-        if (user && user.verified) {
-            if (user.paid) showMainPlatform(user.fullName);
-            else showPaymentPanel(user.fullName, user.email);
-        } else {
-            localStorage.removeItem('currentUser'); showLogin();
-        }
-    } else if (currentAdmin) {
-        if (currentAdmin.role === 'leader') {
-            hideAllPanels();
-            document.getElementById('leaderPanel').classList.remove('hidden');
-            document.getElementById('leaderNameDisplay').textContent = currentAdmin.name;
-            loadPendingPayments(); loadRotationSettings(); loadAvailableMembersForRotation();
-            displayRotationParticipants(); loadUserMessages();
-        } else if (currentAdmin.role === 'ceo') {
-            showCEOPanel();
-        }
-    } else {
-        showSignUp();
+    if (!['active', 'inactive', 'pending'].includes(status)) {
+        return res.status(400).json({ message: 'Invalid status provided.' });
     }
-};
+
+    // Prevent a leader from deactivating a superAdmin (CEO)
+    if (userToUpdate.adminLevel === 'superAdmin' && req.user.adminLevel !== 'superAdmin') {
+        return res.status(403).json({ message: 'Access denied: Cannot change status of a Super Admin.' });
+    }
+    // Prevent user from deactivating themselves
+    if (userToUpdate.id === req.user.id) {
+        return res.status(403).json({ message: 'Access denied: Cannot change your own status.' });
+    }
+
+    userToUpdate.status = status;
+    await writeJsonFile(USERS_FILE, users);
+    addAdminHistory(req.user.email, 'User Status Update', { userId: id, newStatus: status });
+    res.status(200).json({ message: `User ${userToUpdate.fullName} status updated to ${status}.` });
+});
+
+// Add New Admin (CEO Only)
+app.post('/api/admin/add-admin', authenticateToken, authorizeRole(['ceo']), async (req, res) => {
+    const { firstName, lastName, phoneNumber, email, password } = req.body;
+
+    if (!firstName || !lastName || !phoneNumber || !email || !password) {
+        return res.status(400).json({ message: 'All fields are required for new admin.' });
+    }
+    if (users.some(user => user.email === email)) {
+        return res.status(409).json({ message: 'Email already registered as a user or admin.' });
+    }
+
+    const newAdmin = {
+        id: uuidv4(),
+        firstName,
+        lastName,
+        fullName: `${firstName} ${lastName}`,
+        phoneNumber,
+        email,
+        password, // HASH THIS IN PRODUCTION!
+        role: 'leader', // New admins added by CEO are 'leader' by default
+        adminLevel: 'teamLeader',
+        isPaid: true, // Admins are considered paid
+        status: 'active',
+        referralCode: null,
+        referredBy: null,
+        invest: 0,
+        gain: 0,
+        createdAt: new Date().toISOString(),
+        lastLogin: null
+    };
+    users.push(newAdmin);
+    await writeJsonFile(USERS_FILE, users);
+    addAdminHistory(req.user.email, 'New Admin Added', { email: newAdmin.email, role: newAdmin.role });
+    res.status(201).json({ message: 'New Team Leader admin added successfully.' });
+});
+
+// Generate Referral Code (Admin/Leader)
+app.post('/api/admin/referral-code/generate', authenticateToken, authorizeRole(['leader', 'ceo']), async (req, res) => {
+    const newCode = uuidv4().substring(0, 8).toUpperCase(); // Generate a short, unique code
+    referralCodes.push({
+        id: uuidv4(),
+        code: newCode,
+        generatedBy: req.user.id, // ID of the admin/leader who generated it
+        isActive: true,
+        createdAt: new Date().toISOString()
+    });
+    await writeJsonFile(REFERRAL_CODES_FILE, referralCodes);
+    addAdminHistory(req.user.email, 'Referral Code Generated', { code: newCode, generatedFor: req.user.email });
+    res.status(201).json({ message: 'Referral code generated.', referralCode: newCode });
+});
+
+// Get Admin History (CEO Only)
+app.get('/api/admin/history', authenticateToken, authorizeRole(['ceo']), (req, res) => {
+    res.json(adminHistory);
+});
+
+
+// Start the server
+loadAllData().then(() => {
+    app.listen(PORT, () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+        console.log('Backend ready. Ensure your frontend is pointing to this address.');
+    });
+}).catch(err => {
+    console.error('Failed to load initial data or start server:', err);
+    process.exit(1); // Exit if data loading fails
+});
