@@ -151,17 +151,125 @@
             border-color: #ffe082;
             font-weight: bold;
         }
+
+        /* Admin User Management Table */
+        #adminUsersTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        #adminUsersTable th,
+        #adminUsersTable td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        #adminUsersTable th {
+            background-color: #5cb85c; /* Green for user management */
+            color: white;
+        }
+        #adminUsersTable tbody tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        #adminUsersTable button {
+            padding: 5px 10px;
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+        .status-active { color: green; font-weight: bold; }
+        .status-inactive { color: orange; font-weight: bold; }
+        .status-paid { color: #007BFF; font-weight: bold; }
+        .status-unpaid { color: #dc3545; font-weight: bold; }
+
+        /* Admin History Table */
+        #adminHistoryTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        #adminHistoryTable th,
+        #adminHistoryTable td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        #adminHistoryTable th {
+            background-color: #f0ad4e; /* Orange for history */
+            color: white;
+        }
+        #adminHistoryTable tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        #noAdminHistory {
+            font-style: italic;
+            color: #777;
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        /* Referral Code Section */
+        .referral-section {
+            background: #d9edf7;
+            border: 1px solid #bce8f1;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+        }
+        #generatedReferralCode {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #31708f;
+            background-color: #cce5ff;
+            padding: 8px 12px;
+            border-radius: 5px;
+            display: inline-block;
+            margin-top: 10px;
+            border: 1px dashed #a6d9ff;
+        }
+
+        /* New style for the main login button */
+        .login-btn {
+            background-color: #007BFF; /* Blue, similar to payment submit */
+        }
+        .login-btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* Style for the Admin / Leader Access button */
+        .admin-access-btn {
+            background-color: #6c757d; /* Grey */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px; /* Ensure spacing */
+        }
+        .admin-access-btn:hover {
+            background-color: #5a6268;
+        }
     </style>
+    <!-- Moved script.js to head with defer attribute -->
+    <script src="script.js" defer></script>
 </head>
 <body>
 
+<!-- Main Title -->
 <h1>Dream2Build1 - Authentication & Payment System</h1>
 
+<!-- Section: User Registration (Sign Up) -->
 <div class="form-section" id="signUpPanel">
     <h2>📝 Sign Up for Access</h2>
     <form id="signUpForm">
-        <label for="fullName">Full Name:</label>
-        <input type="text" id="fullName" name="fullName" placeholder="Enter your full name" required>
+        <!-- CORRECTED: Added firstName and lastName fields to match script.js -->
+        <label for="firstName">First Name:</label>
+        <input type="text" id="firstName" name="firstName" placeholder="Enter your first name" required>
+
+        <label for="lastName">Last Name:</label>
+        <input type="text" id="lastName" name="lastName" placeholder="Enter your last name" required>
 
         <label for="phoneNumber">Phone Number:</label>
         <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="e.g., +150912345678" required>
@@ -175,12 +283,16 @@
         <label for="confirmPassword">Confirm Password:</label>
         <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Re-enter your password" required>
 
+        <label for="referralCode">Referral Code (Optional):</label>
+        <input type="text" id="referralCode" name="referralCode" placeholder="Enter a referral code if you have one">
+
         <button type="submit">Sign Up</button>
         <p id="signUpMsg" class="hidden"></p>
     </form>
-    <p style="text-align: center; margin-top: 15px;">Already have an account? <a href="#" onclick="showLogin()">Login here</a></p>
+    <p style="text-align: center; margin-top: 15px;">Already have an account? <a href="#" onclick="event.preventDefault(); showLogin();">Login here</a></p>
 </div>
 
+<!-- Section: User Login -->
 <div class="form-section hidden" id="loginPanel">
     <h2>🔐 Log In to Your Account</h2>
     <form id="loginForm">
@@ -190,23 +302,26 @@
         <label for="loginPassword">Password:</label>
         <input type="password" id="loginPassword" name="loginPassword" placeholder="Enter your password" required>
 
-        <button type="submit">Log In</button>
+        <button type="submit" class="login-btn">Log In</button>
         <p id="loginMsg" class="hidden"></p>
     </form>
-    <p style="text-align: center; margin-top: 15px;">Don't have an account? <a href="#" onclick="showSignUp()">Sign Up here</a></p>
-    <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="showContactAdmin()">Contact Support</a></p>
+    <p style="text-align: center; margin-top: 15px;">Don't have an account? <a href="#" onclick="event.preventDefault(); showSignUp();">Sign Up here</a></p>
+    <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="event.preventDefault(); showContactAdmin();">Contact Support</a></p>
     <p style="text-align: center; margin-top: 20px;">
-        <button style="background-color: #6c757d;" onclick="showAdminLoginRegister()">Admin / Leader Access</button>
+        <!-- Ensure this button uses the correct class and event.preventDefault() -->
+        <button class="admin-access-btn" onclick="event.preventDefault(); console.log('Admin / Leader Access button clicked'); showAdminLoginRegister();">Admin / Leader Access</button>
     </p>
 </div>
 
+<!-- Section: Email Verification Message -->
 <div class="panel hidden" id="verificationMessagePanel">
     <h2>📧 Verify Your Email</h2>
     <p>A verification message has been simulated for <strong id="verificationEmailDisplay"></strong>. In a real system, you'd receive an email to verify your account.</p>
-    <p>For this demo, your account is automatically considered verified.</p>
-    <button onclick="showLogin()">Go to Login (After Verification)</button>
+    <p>For this demo, your account is automatically considered verified and pending payment.</p>
+    <button onclick="event.preventDefault(); showLogin();">Go to Login (After Verification)</button>
 </div>
 
+<!-- Section: Payment Panel (Appears after login if not paid) -->
 <div class="panel hidden" id="paymentPanel">
     <h2>💳 Complete Your Payment</h2>
     <p>Welcome, <span id="paymentUserName"></span>! To access the full platform, please complete your payment.</p>
@@ -260,55 +375,72 @@
 </div>
 
 
+<!-- Section: Main User Platform (Accessible after login AND payment) -->
 <div class="panel hidden" id="mainPlatformPanel">
     <h2>Bienvenue sur Dream2Build1, <span id="loggedInUserName"></span>!</h2>
     <div id="mainPlatform">
         <p>This is your main platform content, accessible only after successful login and payment.</p>
-        <p>Here you can explore all features, except the administration area.</p>
-        <p>🚀 Ready to build your dreams!</p>
+        <p id="adminAreaNote"></p>
+        <!-- Participant's Invest/Gain Display -->
+        <div id="participantFinancials" style="margin-top: 20px; border: 1px solid #007BFF; padding: 15px; border-radius: 8px; background-color: #e6f2ff;">
+            <h3>Your Financials:</h3>
+            <p>Your Investment per cycle: <strong>$<span id="participantInvest">0.00</span></strong></p>
+            <p>Your Last Received Gain: <strong>$<span id="participantGain">0.00</span></strong></p>
+            <p>Your Referral Code: <strong><span id="participantReferralCode">N/A</span></strong></p>
+        </div>
+        <p style="margin-top: 20px;">🚀 Ready to build your dreams!</p>
     </div>
     <div class="logout-btn">
         <button onclick="logoutUser()">Log Out</button>
     </div>
 </div>
 
+<!-- Section: Contact Admin Panel -->
 <div class="form-section hidden" id="contactAdminPanel">
     <h2>📧 Contact Support</h2>
     <p>Have a question or an issue? Send us a message!</p>
-    <form id="contactAdminForm" action="https://formspree.io/f/mzzgwonw" method="POST">
+    <form id="contactAdminForm">
         <label for="contactEmail">Your Email:</label>
-        <input type="email" id="contactEmail" name="email" placeholder="Enter your email" required>
+        <input type="email" id="contactEmail" name="contactEmail" placeholder="Enter your email" required>
 
         <label for="contactSubject">Subject:</label>
-        <input type="text" id="contactSubject" name="subject" placeholder="e.g., Payment issue, Account problem" required>
+        <input type="text" id="contactSubject" name="contactSubject" placeholder="e.g., Payment issue, Account problem" required>
 
         <label for="contactMessage">Message:</label>
-        <textarea id="contactMessage" name="message" rows="5" placeholder="Type your message here..." required></textarea>
+        <textarea id="contactMessage" name="contactMessage" rows="5" placeholder="Type your message here..." required></textarea>
 
         <button type="submit">Send Message</button>
         <p id="contactAdminMsg" class="hidden"></p>
     </form>
-    <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="showLogin()">Back to Login</a></p>
+    <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="event.preventDefault(); showLogin();">Back to Login</a></p>
 </div>
 
+<!-- --- Admin/Leader/CEO sections --- -->
+<!-- Section : Team Leader Registration -->
 <div class="form-section hidden" id="leaderRegisterPanel">
-    <h2>👥 Team Leader Registration (Admin Only)</h2>
-    <label for="leaderName">Full Name:</label>
-    <input type="text" id="leaderName" placeholder="Enter full name">
+    <h2>👥 Add New Admin (CEO Only)</h2>
+    <p>This section is for the CEO to add new Team Leader accounts.</p>
+    <label for="newAdminFirstName">First Name:</label>
+    <input type="text" id="newAdminFirstName" placeholder="Enter first name">
 
-    <label for="leaderEmailReg">Email:</label>
-    <input type="email" id="leaderEmailReg" placeholder="Enter email">
+    <label for="newAdminLastName">Last Name:</label>
+    <input type="text" id="newAdminLastName" placeholder="Enter last name">
 
-    <label for="leaderPass1">Create Password:</label>
-    <input type="password" id="leaderPass1" placeholder="Create password">
+    <label for="newAdminPhoneNumber">Phone Number:</label>
+    <input type="tel" id="newAdminPhoneNumber" placeholder="Enter phone number">
 
-    <label for="leaderPass2">Confirm Password:</label>
-    <input type="password" id="leaderPass2" placeholder="Confirm password">
+    <label for="newAdminEmail">Email:</label>
+    <input type="email" id="newAdminEmail" placeholder="Enter email">
 
-    <button onclick="registerLeader()">Register as Team Leader</button>
-    <p id="leaderRegisterMsg"></p>
+    <label for="newAdminPass">Create Password:</label>
+    <input type="password" id="newAdminPass" placeholder="Create password">
+
+    <button onclick="addAdmin()">Add New Admin</button>
+    <p id="newAdminMsg"></p>
+    <p style="text-align: center; margin-top: 15px;">Already registered? <a href="#" onclick="event.preventDefault(); showLeaderLoginOnly();">Login here</a></p>
 </div>
 
+<!-- Section : Team Leader Login -->
 <div class="form-section hidden" id="leaderLoginPanel">
     <h2>🔐 Team Leader Login (Admin Only)</h2>
     <form id="leaderLoginForm">
@@ -321,11 +453,14 @@
         <button type="submit">Login</button>
         <p id="leaderLoginMsg"></p>
     </form>
+    <p style="text-align: center; margin-top: 15px;">New Leader? <a href="#" onclick="event.preventDefault(); showLeaderRegisterOnly();">Register here</a></p>
     <p style="text-align: center; margin-top: 20px;">
-        <button style="background-color: #6c757d;" onclick="showCEOLogin()">Login as CEO</button>
+        <!-- Ensure this button uses the correct class and event.preventDefault() -->
+        <button class="admin-access-btn" onclick="event.preventDefault(); console.log('CEO Login button clicked from Leader Login'); showCEOLogin();">CEO Access</button>
     </p>
 </div>
 
+<!-- Section: CEO Login -->
 <div class="form-section hidden" id="ceoLoginPanel">
     <h2>👑 CEO Login</h2>
     <form id="ceoLoginForm">
@@ -338,10 +473,11 @@
         <button type="submit">Log In as CEO</button>
         <p id="ceoLoginMsg" class="hidden"></p>
     </form>
-    <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="showAdminLoginRegister()">Back to Admin/Leader Login</a></p>
+    <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="event.preventDefault(); showAdminLoginRegister();">Back to Admin/Leader Login</a></p>
 </div>
 
 
+<!-- Section : Team Leader Dashboard -->
 <div id="leaderPanel" class="panel hidden">
     <h2>🧑‍🤝‍🧑 Team Leader Dashboard</h2>
     <p>Welcome, <span id="leaderNameDisplay"></span>!</p>
@@ -352,46 +488,78 @@
     <hr>
     <h3>💸 Pending Payments:</h3>
     <ul id="pendingPaymentsList">
-        </ul>
+        <!-- Pending payments will be dynamically added here -->
+    </ul>
     <p id="noPendingPayments" style="font-style: italic;">No pending payments.</p>
 
     <hr>
     <h3>✉️ User Messages: <span id="unreadMessageCount">(0 unread)</span></h3>
     <ul id="userMessagesList">
-        </ul>
+        <!-- Messages will be dynamically added here -->
+    </ul>
     <p id="noUserMessages" style="font-style: italic;">No new messages.</p>
 
     <hr>
     <div class="rotation-section">
         <h3>🔄 Rotation Management</h3>
         <p>Current Rotation Day: <strong id="currentRotationDay">0</strong></p>
-        <label for="dailyInvest">Daily Investment ($):</label>
-        <input type="number" id="dailyInvest" value="100" min="0" step="0.01">
-
-        <label for="dailyGain">Daily Gain ($):</label>
-        <input type="number" id="dailyGain" value="1000" min="0" step="0.01">
-
+        <p>Current Recipient: <strong id="currentRecipientDisplay">N/A</strong></p>
+        <label for="dailyInvest">Individual Participant Investment ($):</label>
+        <input type="number" id="dailyInvest" value="10" min="0" step="0.01">
         <button onclick="saveRotationSettings()">Update Settings</button>
         <p id="rotationSettingsMsg" class="hidden"></p>
 
         <hr>
         <h4>Participants in Rotation:</h4>
         <select id="availableMembersSelect" style="width: 70%; display: inline-block; margin-right: 10px;">
-            <option value="">-- Select Paid Member --</option>
-            </select>
+            <option value="">-- Select Paid & Active Member --</option>
+            <!-- Options will be dynamically loaded here -->
+        </select>
         <button style="background-color: #007BFF; width: auto; padding: 10px 15px; margin-right: 0;" onclick="addParticipantToRotation()">Add Participant</button>
         <p id="addParticipantMsg" class="hidden"></p>
 
         <ul id="rotationParticipantsList">
-            </ul>
+            <!-- Active participants will be listed here -->
+        </ul>
         <p id="noActiveParticipants" style="font-style: italic;">No participants in rotation.</p>
 
         <button style="background-color: #ffc107;" onclick="nextParticipant()">Next Participant (Rotate)</button>
         <p id="rotationStatusMsg" class="hidden"></p>
     </div>
 
+    <hr>
+    <h3>👥 User Accounts Management:</h3>
+    <table id="adminUsersTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Paid</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- User accounts will be dynamically added here -->
+        </tbody>
+    </table>
+    <p id="noUsersFound" style="font-style: italic;">No users registered yet.</p>
+
+    <hr>
+    <div class="referral-section">
+        <h3>🔗 Referral Code Generator</h3>
+        <button onclick="generateReferralCode()">Generate New Referral Code</button>
+        <p id="generatedReferralCodeMsg" class="hidden"></p>
+        <p id="generatedReferralCode"></p>
+    </div>
+
+    <p style="font-size: 0.9em; color: #666; margin-top: 20px;">
+        <em>Note: All user, payment, and rotation data is simulated and will reset when the server (`server.js`) is restarted.</em>
+    </p>
 </div>
 
+<!-- Section : CEO Dashboard -->
 <div id="ceoPanel" class="panel hidden">
     <h2>👑 CEO Dashboard</h2>
     <p>Welcome, CEO!</p>
@@ -407,20 +575,40 @@
                 <th>Day</th>
                 <th>Recipient</th>
                 <th>Invest ($)</th>
+                <th>Total Pool ($)</th>
                 <th>Gain ($)</th>
                 <th>Date/Time</th>
             </tr>
         </thead>
         <tbody>
-            </tbody>
+            <!-- History will be dynamically added here -->
+        </tbody>
     </table>
     <p id="noRotationHistory" class="hidden">No rotation history available yet.</p>
 
+    <hr>
+    <h3>📊 System Activity History:</h3>
+    <table id="adminHistoryTable">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- System history will be dynamically added here -->
+        </tbody>
+    </table>
+    <p id="noAdminHistory" class="hidden">No system history available yet.</p>
+
     <button style="margin-top: 20px;" onclick="calculRotation()">Generate Comprehensive Report (Future Feature)</button>
     <p id="ceoReportMsg" class="hidden" style="margin-top: 10px;"></p>
+    <p style="font-size: 0.9em; color: #666; margin-top: 20px;">
+        <em>Note: All user, payment, and rotation data is simulated and will reset when the server (`server.js`) is restarted.</em>
+    </p>
 </div>
 
-<script></script>
-<script src="script.js"></script>
 </body>
 </html>
