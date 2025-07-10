@@ -441,6 +441,7 @@ document.getElementById('paymentForm').addEventListener('submit', async function
         msg.classList.remove('hidden', 'success-msg');
         msg.classList.add('error-msg');
     }
+    setTimeout(() => msg.classList.add('hidden'), 3000);
 });
 
 
@@ -656,7 +657,7 @@ async function loginAdmin(role) {
                 document.getElementById('ceoPanel').classList.remove('hidden');
                 await displayRotationHistory();
                 await displayAdminHistory(); // Load system history
-                await loadAdminUsers(); // Load users for management
+                await loadAdminUsers(); // Load users for management (CEO also needs this)
             } else {
                 console.warn('LOGIN ROUTING: Unknown user role received during admin login:', data.user.role, 'Defaulting to main platform.');
                 setTimeout(() => showMainPlatform(data.user.fullName, data.user.invest, data.user.gain, data.user.referralCode), 500);
@@ -673,6 +674,7 @@ async function loginAdmin(role) {
         msg.classList.remove('hidden', 'success-msg');
         msg.classList.add('error-msg');
     }
+    setTimeout(() => msg.classList.add('hidden'), 3000);
 }
 
 function logoutLeader() {
