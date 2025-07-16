@@ -1,676 +1,540 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Dream2Build1 - Authentication & Payment</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background: #f1f1f1; }
-        h1, h2 { text-align: center; color: #007BFF; }
-        .container, .panel, .form-section {
-            max-width: 900px; margin: auto; background: white; padding: 20px;
-            border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        label { display: block; margin-top: 10px; font-weight: bold; }
-        input, select, textarea {
-            width: 100%; padding: 10px; margin-top: 5px; margin-bottom: 15px;
-            border: 1px solid #ccc; border-radius: 4px;
-            box-sizing: border-box;
-        }
-        button {
-            background-color: #28a745; color: white; border: none; padding: 10px 20px;
-            font-size: 16px; border-radius: 5px; cursor: pointer;
-        }
-        button:hover { background-color: #218838; }
-        .hidden { display: none; }
-        .logout-btn button { background-color: #dc3545; }
-        .error-msg { color: red; font-weight: bold; }
-        .success-msg { color: green; font-weight: bold; }
-
-        /* Specific styles for the main platform content */
-        #mainPlatform {
-            border: 1px dashed #007BFF;
-            padding: 30px;
-            text-align: center;
-            font-size: 1.2em;
-            color: #007BFF;
-        }
-        .paiement-etapes {
-            display: none; /* Hidden by default, shown by JS */
-            background: #fff3cd;
-            padding: 10px; border-left: 5px solid #ffc107; margin-bottom: 20px;
-        }
-        .paiement-etapes .hidden {
-            display: none;
-        }
-        .paiement-etapes div {
-            margin-top: 10px;
-        }
-        .paiement-submit-btn {
-            background-color: #007BFF; /* Blue for payment */
-        }
-        .paiement-submit-btn:hover {
-            background-color: #0056b3;
-        }
-        #pendingPaymentsList li {
-            background: #f9f9f9;
-            border: 1px solid #eee;
-            padding: 10px;
-            margin-bottom: 8px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        #pendingPaymentsList li button {
-            padding: 5px 10px;
-            font-size: 0.9em;
-        }
-        /* New styles for Rotation Management */
-        .rotation-section {
-            background: #e9f7ef;
-            border: 1px solid #d4edda;
-            padding: 15px;
-            margin-top: 20px;
-            border-radius: 8px;
-        }
-        .rotation-section label {
-            width: auto;
-            margin-right: 10px;
-            display: inline-block;
-        }
-        .rotation-section input {
-            width: calc(50% - 70px); /* Adjust width to fit with label */
-            display: inline-block;
-            margin-bottom: 10px;
-        }
-        .rotation-section button {
-            margin-right: 10px;
-            margin-top: 10px;
-        }
-        #rotationParticipantsList {
-            list-style-type: decimal;
-            padding-left: 20px;
-            margin-top: 10px;
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px dashed #28a745;
-            padding-top: 10px;
-            padding-bottom: 10px;
-            border-radius: 5px;
-        }
-        #rotationParticipantsList li {
-            padding: 5px 0;
-            border-bottom: 1px dotted #ccc;
-        }
-        #rotationParticipantsList li:last-child {
-            border-bottom: none;
-        }
-        .current-recipient {
-            background-color: #d4edda;
-            font-weight: bold;
-            padding: 2px 5px;
-            border-radius: 3px;
-        }
-        /* CEO Rotation History Table */
-        #ceoRotationHistoryTable {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        #ceoRotationHistoryTable th,
-        #ceoRotationHistoryTable td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        #ceoRotationHistoryTable th {
-            background-color: #007BFF;
-            color: white;
-        }
-        #ceoRotationHistoryTable tbody tr:nth-child(even) {
-            background-color: #f2f2f2;
-        }
-        #noRotationHistory {
-            font-style: italic;
-            color: #777;
-            text-align: center;
-            margin-top: 15px;
-        }
-
-        /* Styles for User Messages list */
-        #userMessagesList li {
-            border: 1px solid #ddd;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-        }
-        #userMessagesList li.unread {
-            background-color: #fffde7; /* Light yellow for unread */
-            border-color: #ffe082;
-            font-weight: bold;
-        }
-
-        /* Admin User Management Table */
-        #adminUsersTable {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        #adminUsersTable th,
-        #adminUsersTable td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        #adminUsersTable th {
-            background-color: #5cb85c; /* Green for user management */
-            color: white;
-        }
-        #adminUsersTable tbody tr:nth-child(even) {
-            background-color: #f2f2f2;
-        }
-        #adminUsersTable button {
-            padding: 5px 10px;
-            font-size: 0.8em;
-            margin-right: 5px;
-        }
-        .status-active { color: green; font-weight: bold; }
-        .status-inactive { color: orange; font-weight: bold; }
-        .status-paid { color: #007BFF; font-weight: bold; }
-        .status-unpaid { color: #dc3545; font-weight: bold; }
-
-        /* Admin History Table */
-        #adminHistoryTable, #generalHistoryTable { /* Apply to both history tables */
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            font-size: 0.9em;
-        }
-        #adminHistoryTable th, #generalHistoryTable th,
-        #adminHistoryTable td, #generalHistoryTable td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-            vertical-align: top;
-        }
-        #adminHistoryTable th, #generalHistoryTable th {
-            background-color: #f0ad4e; /* Orange for history */
-            color: white;
-        }
-        #adminHistoryTable tbody tr:nth-child(even), #generalHistoryTable tbody tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        #noAdminHistory, #noGeneralHistory { /* Apply to both no history messages */
-            font-style: italic;
-            color: #777;
-            text-align: center;
-            margin-top: 15px;
-        }
-
-        /* Referral Code Section */
-        .referral-section {
-            background: #d9edf7;
-            border: 1px solid #bce8f1;
-            padding: 15px;
-            margin-top: 20px;
-            border-radius: 8px;
-        }
-        #generatedReferralCode {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #31708f;
-            background-color: #cce5ff;
-            padding: 8px 12px;
-            border-radius: 5px;
-            display: inline-block;
-            margin-top: 10px;
-            border: 1px dashed #a6d9ff;
-        }
-
-        /* New style for the main login button */
-        .login-btn {
-            background-color: #007BFF; /* Blue, similar to payment submit */
-        }
-        .login-btn:hover {
-            background-color: #0056b3;
-        }
-
-        /* Style for the Admin / Leader Access button */
-        .admin-access-btn {
-            background-color: #6c757d; /* Grey */
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 20px; /* Ensure spacing */
-        }
-        .admin-access-btn:hover {
-            background-color: #5a6268;
-        }
-        .export-button {
-            background-color: #17a2b8; /* Info blue */
-            margin-top: 10px;
-            margin-bottom: 10px;
-        }
-        .export-button:hover {
-            background-color: #138496;
-        }
-    </style>
-    <script src="script.js" defer></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dream2Build</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
-<h1>Dream2Build1 - Authentication & Payment System</h1>
+    <!-- Message Display Area (for displayTempMessage) -->
+    <div id="tempMessageContainer"></div>
 
-<div class="form-section" id="signUpPanel">
-    <h2>📝 Sign Up for Access</h2>
-    <form id="signUpForm">
-        <label for="firstName">First Name:</label>
-        <input type="text" id="firstName" name="firstName" placeholder="Enter your first name" required>
+    <!-- Main Container -->
+    <div class="relative w-full max-w-md bg-white p-8 rounded-lg shadow-lg">
 
-        <label for="lastName">Last Name:</label>
-        <input type="text" id="lastName" name="lastName" placeholder="Enter your last name" required>
+        <h2 class="text-2xl font-bold text-center mb-6 text-indigo-600">Dream2Build</h2>
 
-        <label for="phoneNumber">Phone Number:</label>
-        <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="e.g., +150912345678" required>
+        <!-- Sign Up Panel -->
+        <div id="signUpPanel" class="panel">
+            <h3 class="text-xl font-semibold mb-4 text-center">Sign Up</h3>
+            <form id="signUpForm" class="space-y-4">
+                <div>
+                    <label for="firstName" class="block text-sm font-medium text-gray-700">First Name</label>
+                    <input type="text" id="firstName" name="firstName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="lastName" class="block text-sm font-medium text-gray-700">Last Name</label>
+                    <input type="text" id="lastName" name="lastName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="phoneNumber" class="block text-sm font-medium text-gray-700">Phone Number</label>
+                    <input type="tel" id="phoneNumber" name="phoneNumber" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="email" name="email" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="password" name="password" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="confirmPassword" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="referralCode" class="block text-sm font-medium text-gray-700">Referral Code (Optional)</label>
+                    <input type="text" id="referralCode" name="referralCode" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Sign Up</button>
+                <p id="signUpMsg" class="text-center text-sm mt-2 hidden"></p>
+            </form>
+            <p class="text-center text-sm mt-4">Already have an account? <a href="#" onclick="showLogin()" class="text-indigo-600 hover:underline">Login here</a></p>
+            <p class="text-center text-sm mt-2">Admin/Leader? <a href="#" onclick="showAdminLoginRegister()" class="text-indigo-600 hover:underline">Login here</a></p>
+            <p class="text-center text-sm mt-2">Need help? <a href="#" onclick="showContactAdmin()" class="text-indigo-600 hover:underline">Contact Admin</a></p>
 
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" placeholder="Enter your email" required>
-
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" placeholder="Create your password" required>
-
-        <label for="confirmPassword">Confirm Password:</label>
-        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Re-enter your password" required>
-
-        <label for="referralCode">Referral Code (Optional):</label>
-        <input type="text" id="referralCode" name="referralCode" placeholder="Enter a referral code if you have one">
-
-        <button type="submit">Sign Up</button>
-        <p id="signUpMsg" class="hidden"></p>
-    </form>
-    <p style="text-align: center; margin-top: 15px;">Already have an account? <a href="#" onclick="event.preventDefault(); showLogin();">Login here</a></p>
-</div>
-
-<div class="form-section hidden" id="loginPanel">
-    <h2>🔐 Log In to Your Account</h2>
-    <form id="loginForm">
-        <label for="loginEmail">Email:</label>
-        <input type="email" id="loginEmail" name="loginEmail" placeholder="Enter your email" required>
-
-        <label for="loginPassword">Password:</label>
-        <input type="password" id="loginPassword" name="loginPassword" placeholder="Enter your password" required>
-
-        <button type="submit" class="login-btn">Log In</button>
-        <p id="loginMsg" class="hidden"></p>
-    </form>
-    <p style="text-align: center; margin-top: 15px;">Don't have an account? <a href="#" onclick="event.preventDefault(); showSignUp();">Sign Up here</a></p>
-    <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="event.preventDefault(); showContactAdmin();">Contact Support</a></p>
-    <p style="text-align: center; margin-top: 20px;">
-        <button class="admin-access-btn" onclick="event.preventDefault(); console.log('Admin / Leader Access button clicked'); showAdminLoginRegister();">Admin / Leader Access</button>
-    </p>
-</div>
-
-<div class="panel hidden" id="verificationMessagePanel">
-    <h2>📧 Verify Your Email</h2>
-    <p>A verification message has been simulated for <strong id="verificationEmailDisplay"></strong>. In a real system, you'd receive an email to verify your account.</p>
-    <p>For this demo, your account is automatically considered verified and pending payment.</p>
-    <button onclick="event.preventDefault(); showLogin();">Go to Login (After Verification)</button>
-</div>
-
-<div class="panel hidden" id="paymentPanel">
-    <h2>💳 Complete Your Payment</h2>
-    <p>Welcome, <span id="paymentUserName"></span>! To access the full platform, please complete your payment.</p>
-    <form id="paymentForm">
-        <label for="paymentMethod">Choose Payment Method:</label>
-        <select id="paymentMethod" name="paymentMethod" onchange="showPaymentInstructions(this.value)" required>
-            <option value="">-- Select Payment Method --</option>
-            <option value="cash">Cash</option>
-            <option value="mastercard">Mastercard / Debit Card</option>
-            <option value="paypal">PayPal</option>
-            <option value="moncash">MonCash</option>
-            <option value="natcash">NatCash</option>
-        </select>
-
-        <div class="paiement-etapes" id="paymentInstructions">
-            <div id="cashInfo" class="hidden">
-                <p><strong>Cash:</strong> A team leader will contact you to validate your payment.</p>
-                <p>Once validated, your account will be fully activated. Click "Submit Payment Info" below to confirm your intent to pay by cash.</p>
-            </div>
-            <div id="mastercardInfo" class="hidden">
-                <p><strong>Mastercard / Debit Card:</strong> (Simulated payment)</p>
-                <label>Card Number (16 digits):</label>
-                <input type="text" id="cardNumber" maxlength="16" pattern="\d{16}" placeholder="1234 5678 9012 3456">
-                <label>Expiration Date (MM/YY):</label>
-                <input type="text" id="cardExpiry" maxlength="5" pattern="\d{2}/\d{2}" placeholder="MM/YY">
-                <label>CVC:</label>
-                <input type="text" id="cardCVC" maxlength="4" pattern="\d{3,4}" placeholder="123">
-                <label>Name on Card:</label>
-                <input type="text" id="cardName" placeholder="Name as on card">
-            </div>
-            <div id="paypalInfo" class="hidden">
-                <p><strong>PayPal:</strong> (Simulated payment)</p>
-                <p>In a real system, you would be redirected to PayPal. For this demo, simply submit.</p>
-                <p>Use this PayPal email to pay: <strong>dream2build@gmail.com</strong></p>
-            </div>
-            <div id="moncashInfo" class="hidden">
-                <p><strong>MonCash:</strong> (Simulated payment)</p>
-                <p>Send payment to <strong>+509 43260012</strong> (Name: Emmanuel Jean Frantz JEAMBAS)</p>
-            </div>
-            <div id="natcashInfo" class="hidden">
-                <p><strong>NatCash:</strong> (Simulated payment)</p>
-                <p>Send payment to <strong>+509 43260012</strong> (Name: Emmanuel Jean Frantz JEAMBAS)</p>
-            </div>
         </div>
-        <button type="submit" class="paiement-submit-btn">Submit Payment Info</button>
-        <p id="paymentMsg" class="hidden"></p>
-    </form>
-    <div class="logout-btn">
-        <button onclick="logoutUser()">Log Out</button>
-    </div>
-</div>
 
-
-<div class="panel hidden" id="mainPlatformPanel">
-    <h2>Bienvenue sur Dream2Build1, <span id="loggedInUserName"></span>!</h2>
-    <div id="mainPlatform">
-        <p>This is your main platform content, accessible only after successful login and payment.</p>
-        <p id="adminAreaNote"></p>
-        <div id="participantFinancials" style="margin-top: 20px; border: 1px solid #007BFF; padding: 15px; border-radius: 8px; background-color: #e6f2ff;">
-            <h3>Your Financials:</h3>
-            <p>Your Investment per cycle: <strong>$<span id="participantInvest">0.00</span></strong></p>
-            <p>Your Last Received Gain: <strong>$<span id="participantGain">0.00</span></strong></p>
-            <p>Your Referral Code: <strong><span id="participantReferralCode">N/A</span></strong></p>
+        <!-- Login Panel (hidden by default) -->
+        <div id="loginPanel" class="panel hidden">
+            <h3 class="text-xl font-semibold mb-4 text-center">Login</h3>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="loginEmail" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="loginEmail" name="loginEmail" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="loginPassword" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="loginPassword" name="loginPassword" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Login</button>
+                <p id="loginMsg" class="text-center text-sm mt-2 hidden"></p>
+            </form>
+            <p class="text-center text-sm mt-4">Don't have an account? <a href="#" onclick="showSignUp()" class="text-indigo-600 hover:underline">Sign Up here</a></p>
+            <p class="text-center text-sm mt-2">Admin/Leader? <a href="#" onclick="showAdminLoginRegister()" class="text-indigo-600 hover:underline">Login here</a></p>
+            <p class="text-center text-sm mt-2">Need help? <a href="#" onclick="showContactAdmin()" class="text-indigo-600 hover:underline">Contact Admin</a></p>
         </div>
-        <p style="margin-top: 20px;">🚀 Ready to build your dreams!</p>
-        <div style="margin-top: 30px; padding: 15px; background-color: #f0f0f0; border-radius: 8px;">
-            <h3>Outils et Rapports</h3>
-            <p>Accédez au système de rotation en ligne : 
-                <a href="https://jid33.github.io/link-to-ceo-users-leader-dashboard/" target="_blank" 
-                  style="background-color: #28a745; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px;">
-                    Rotation en ligne D2B1
-                  </a>
-            </p>
+
+        <!-- Verification Message Panel (hidden by default) -->
+        <div id="verificationMessagePanel" class="panel hidden">
+            <h3 class="text-xl font-semibold mb-4 text-center">Verify Your Account</h3>
+            <p class="text-center text-gray-700 mb-4">A verification link has been sent to <span id="verificationEmailDisplay" class="font-bold"></span>. Please check your email to activate your account.</p>
+            <p class="text-center text-sm mt-4">Already verified? <a href="#" onclick="showLogin()" class="text-indigo-600 hover:underline">Login here</a></p>
         </div>
+
+        <!-- Payment Panel (hidden by default) -->
+        <div id="paymentPanel" class="panel hidden">
+            <h3 class="text-xl font-semibold mb-4 text-center">Payment for <span id="paymentUserName" class="font-bold"></span></h3>
+            <p class="text-center text-gray-700 mb-4">Please make a payment of $25 to activate your account.</p>
+            <form id="paymentForm" class="space-y-4">
+                <div>
+                    <label for="paymentMethod" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                    <select id="paymentMethod" name="paymentMethod" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" onchange="showPaymentInstructions(this.value)" required>
+                        <option value="">Select a method</option>
+                        <option value="moncash">MonCash</option>
+                        <option value="natcash">NatCash</option>
+                        <option value="banktransfer">Bank Transfer</option>
+                        <option value="cash">Cash</option>
+                    </select>
+                </div>
+
+                <div id="paymentInstructions" class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md hidden">
+                    <h4 class="font-semibold text-blue-800 mb-2">Payment Instructions:</h4>
+                    <div id="moncashInfo" class="hidden">
+                        <p><strong>MonCash:</strong> Send $25 to MonCash number: 509-XXXX-XXXX</p>
+                        <p>Reference: Your Email (<span id="moncashEmailRef" class="font-bold"></span>)</p>
+                    </div>
+                    <div id="natcashInfo" class="hidden">
+                        <p><strong>NatCash:</strong> Send $25 to NatCash number: 509-YYYY-YYYY</p>
+                        <p>Reference: Your Email (<span id="natcashEmailRef" class="font-bold"></span>)</p>
+                    </div>
+                    <div id="banktransferInfo" class="hidden">
+                        <p><strong>Bank Transfer:</strong> Transfer $25 to Bank Name: ABC Bank, Account No: 123456789</p>
+                        <p>Reference: Your Email (<span id="banktransferEmailRef" class="font-bold"></span>)</p>
+                    </div>
+                    <div id="cashInfo" class="hidden">
+                        <p><strong>Cash:</strong> Contact a team leader to arrange a cash payment.</p>
+                        <p>Reference: Your Email (<span id="cashEmailRef" class="font-bold"></span>)</p>
+                    </div>
+                    <p class="mt-2 text-sm text-blue-700">Your account will be activated after payment validation by a team leader.</p>
+                </div>
+
+                <button type="submit" class="w-full bg-green-600 text-white p-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Submit Payment Info</button>
+                <p id="paymentMsg" class="text-center text-sm mt-2 hidden"></p>
+            </form>
+            <p class="text-center text-sm mt-4"><a href="#" onclick="logoutUser()" class="text-red-600 hover:underline">Logout</a></p>
         </div>
-    <div class="logout-btn">
-        <button onclick="logoutUser()">Log Out</button>
-    </div>
-</div>
 
-<div class="form-section hidden" id="contactAdminPanel">
-    <h2>📧 Contact Support</h2>
-    <p>Have a question or an issue? Send us a message!</p>
-    <form id="contactAdminForm">
-        <label for="contactEmail">Your Email:</label>
-        <input type="email" id="contactEmail" name="contactEmail" placeholder="Enter your email" required>
+        <!-- Main Platform Panel (hidden by default) -->
+        <div id="mainPlatformPanel" class="panel hidden">
+            <h3 class="text-xl font-semibold mb-4 text-center">Welcome, <span id="loggedInUserName" class="font-bold text-indigo-600"></span>!</h3>
+            <p id="adminAreaNote" class="text-center text-red-500 mb-4 font-semibold"></p>
 
-        <label for="contactSubject">Subject:</label>
-        <input type="text" id="contactSubject" name="contactSubject" placeholder="e.g., Payment issue, Account problem" required>
+            <div id="participantFinancials" class="space-y-2 mb-6 p-4 border border-gray-200 rounded-md bg-gray-50">
+                <p class="text-gray-700">Total Invested: $<span id="participantInvest" class="font-bold">0.00</span></p>
+                <p class="text-gray-700">Total Gain: $<span id="participantGain" class="font-bold">0.00</span></p>
+                <p class="text-gray-700">Your Referral Code: <span id="participantReferralCode" class="font-bold text-indigo-600">N/A</span></p>
+            </div>
 
-        <label for="contactMessage">Message:</label>
-        <textarea id="contactMessage" name="contactMessage" rows="5" placeholder="Type your message here..." required></textarea>
-
-        <button type="submit">Send Message</button>
-        <p id="contactAdminMsg" class="hidden"></p>
-    </form>
-    <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="event.preventDefault(); showLogin();">Back to Login</a></p>
-</div>
-
-<!-- UPDATED LEADER REGISTER PANEL START -->
-<div class="form-section hidden" id="leaderRegisterPanel">
-    <h2>👥 Register New Team Leader</h2>
-    <p>Please use the form below to register as a new Team Leader.</p>
-    <form id="leaderRegisterForm">
-        <label for="newLeaderFirstName">First Name:</label>
-        <input type="text" id="newLeaderFirstName" name="newLeaderFirstName" placeholder="Enter first name" required>
-
-        <label for="newLeaderLastName">Last Name:</label>
-        <input type="text" id="newLeaderLastName" name="newLeaderLastName" placeholder="Enter last name" required>
-
-        <label for="newLeaderPhoneNumber">Phone Number:</label>
-        <input type="tel" id="newLeaderPhoneNumber" name="newLeaderPhoneNumber" placeholder="e.g., +150912345678" required>
-
-        <label for="newLeaderEmail">Email:</label>
-        <input type="email" id="newLeaderEmail" name="newLeaderEmail" placeholder="Enter email" required>
-
-        <label for="newLeaderPassword">Create Password:</label>
-        <input type="password" id="newLeaderPassword" name="newLeaderPassword" placeholder="Create password" required>
-
-        <label for="newLeaderConfirmPassword">Confirm Password:</label>
-        <input type="password" id="newLeaderConfirmPassword" name="newLeaderConfirmPassword" placeholder="Re-enter password" required>
-
-        <button type="submit">Register as Leader</button>
-        <p id="leaderRegisterMsg" class="hidden"></p>
-    </form>
-    <p style="text-align: center; margin-top: 15px;">Already registered? <a href="#" onclick="event.preventDefault(); showLeaderLoginOnly();">Login here</a></p>
-</div>
-<!-- UPDATED LEADER REGISTER PANEL END -->
-
-<div class="form-section hidden" id="leaderLoginPanel">
-    <h2>🔐 Team Leader Login (Admin Only)</h2>
-    <form id="leaderLoginForm">
-        <label for="loginLeaderEmail">Email:</label>
-        <input type="email" id="loginLeaderEmail" name="loginLeaderEmail" placeholder="Enter email" required>
-
-        <label for="loginLeaderPass">Password:</label>
-        <input type="password" id="loginLeaderPass" name="loginLeaderPass" placeholder="Enter password" required>
-
-        <button type="submit">Login</button>
-        <p id="leaderLoginMsg"></p>
-    </form>
-    <p style="text-align: center; margin-top: 15px;">New Leader? <a href="#" onclick="event.preventDefault(); showLeaderRegisterOnly();">Register here</a></p>
-    <p style="text-align: center; margin-top: 20px;">
-        <button class="admin-access-btn" onclick="event.preventDefault(); console.log('CEO Login button clicked from Leader Login'); showCEOLogin();">CEO Access</button>
-    </p>
-</div>
-
-<div class="form-section hidden" id="ceoLoginPanel">
-    <h2>👑 CEO Login</h2>
-    <form id="ceoLoginForm">
-        <label for="ceoLoginEmail">Email:</label>
-        <input type="email" id="ceoLoginEmail" name="ceoLoginEmail" placeholder="Enter CEO email" required>
-
-        <label for="ceoLoginPassword">Password:</label>
-        <input type="password" id="ceoLoginPassword" name="ceoLoginPassword" placeholder="Enter CEO password" required>
-
-        <button type="submit">Log In as CEO</button>
-        <p id="ceoLoginMsg" class="hidden"></p>
-    </form>
-    <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="event.preventDefault(); showAdminLoginRegister();">Back to Admin/Leader Login</a></p>
-</div>
-
-
-<div id="leaderPanel" class="panel hidden">
-    <h2>🧑‍🤝‍🧑 Team Leader Dashboard</h2>
-    <p>Welcome, <span id="leaderNameDisplay"></span>!</p>
-    <div class="logout-btn">
-        <button onclick="logoutLeader()">Logout</button>
-    </div>
-
-    <hr>
-    <div style="margin-top: 20px; padding: 15px; background-color: #f0f0f0; border-radius: 8px;">
-        <h3>Accès Rapide</h3>
-        <p>Gérer le système de rotation en ligne : 
-            <a href="https://jid33.github.io/link-to-ceo-users-leader-dashboard/" target="_blank" 
-              style="background-color: #007BFF; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px;">
-                    Rotation D2B1 (Admin)
-                  </a>
-        </p>
-    </div>
-    <hr>
-    <h3>💸 Pending Payments:</h3>
-    <ul id="pendingPaymentsList">
-        </ul>
-    <p id="noPendingPayments" style="font-style: italic;">No pending payments.</p>
-
-    <hr>
-    <h3>✉️ User Messages: <span id="unreadMessageCount">(0 unread)</span></h3>
-    <ul id="userMessagesList">
-        </ul>
-    <p id="noUserMessages" style="font-style: italic;">No new messages.</p>
-
-    <hr>
-    <div class="rotation-section">
-        <h3>🔄 Rotation Management</h3>
-        <p>Current Rotation Day: <strong id="currentRotationDay">0</strong></p>
-        <p>Current Recipient: <strong id="currentRecipientDisplay">N/A</strong></p>
-        <label for="dailyInvest">Individual Participant Investment ($):</label>
-        <input type="number" id="dailyInvest" value="10" min="0" step="0.01">
-        <button onclick="saveRotationSettings()">Update Settings</button>
-        <p id="rotationSettingsMsg" class="hidden"></p>
-
-        <hr>
-        <h4>Participants in Rotation:</h4>
-        <select id="availableMembersSelect" style="width: 70%; display: inline-block; margin-right: 10px;">
-            <option value="">-- Select Paid & Active Member --</option>
-            </select>
-        <button style="background-color: #007BFF; width: auto; padding: 10px 15px; margin-right: 0;" onclick="addParticipantToRotation()">Add Participant</button>
-        <p id="addParticipantMsg" class="hidden"></p>
-
-        <ul id="rotationParticipantsList">
+            <h4 class="font-semibold text-lg mb-2">Platform Features:</h4>
+            <ul class="list-disc list-inside space-y-1 mb-6">
+                <li>View your earnings and investments.</li>
+                <li>Participate in the daily rotation.</li>
+                <li>Refer new members to earn bonuses.</li>
             </ul>
-        <p id="noActiveParticipants" style="font-style: italic;">No participants in rotation.</p>
 
-        <button style="background-color: #ffc107;" onclick="nextParticipant()">Next Participant (Rotate)</button>
-        <p id="rotationStatusMsg" class="hidden"></p>
+            <button onclick="logoutUser()" class="w-full bg-red-600 text-white p-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">Logout</button>
+        </div>
+
+        <!-- Leader Login Panel (hidden by default) -->
+        <div id="leaderLoginPanel" class="panel hidden">
+            <h3 class="text-xl font-semibold mb-4 text-center">Team Leader Login</h3>
+            <form id="leaderLoginForm" class="space-y-4">
+                <div>
+                    <label for="loginLeaderEmail" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="loginLeaderEmail" name="loginLeaderEmail" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="loginLeaderPass" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="loginLeaderPass" name="loginLeaderPass" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Leader Login</button>
+                <p id="leaderLoginMsg" class="text-center text-sm mt-2 hidden"></p>
+            </form>
+            <p class="text-center text-sm mt-4">Not a leader? <a href="#" onclick="showLogin()" class="text-indigo-600 hover:underline">Back to User Login</a></p>
+            <p class="text-center text-sm mt-2">Are you a new Leader? <a href="#" onclick="showLeaderRegisterOnly()" class="text-indigo-600 hover:underline">Register here</a></p>
+            <p class="text-center text-sm mt-2">CEO? <a href="#" onclick="showCEOLogin()" class="text-indigo-600 hover:underline">Login here</a></p>
+        </div>
+
+        <!-- Leader Registration Panel (hidden by default) -->
+        <div id="leaderRegisterPanel" class="panel hidden">
+            <h3 class="text-xl font-semibold mb-4 text-center">Team Leader Registration</h3>
+            <form id="leaderRegisterForm" class="space-y-4">
+                <div>
+                    <label for="leaderFirstName" class="block text-sm font-medium text-gray-700">First Name</label>
+                    <input type="text" id="leaderFirstName" name="leaderFirstName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="leaderLastName" class="block text-sm font-medium text-gray-700">Last Name</label>
+                    <input type="text" id="leaderLastName" name="leaderLastName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="leaderPhoneNumber" class="block text-sm font-medium text-gray-700">Phone Number</label>
+                    <input type="tel" id="leaderPhoneNumber" name="leaderPhoneNumber" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="leaderEmail" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="leaderEmail" name="leaderEmail" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="leaderPassword" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="leaderPassword" name="leaderPassword" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="leaderConfirmPassword" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+                    <input type="password" id="leaderConfirmPassword" name="leaderConfirmPassword" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Register as Leader</button>
+                <p id="leaderRegisterMsg" class="text-center text-sm mt-2 hidden"></p>
+            </form>
+            <p class="text-center text-sm mt-4">Already registered? <a href="#" onclick="showLeaderLoginOnly()" class="text-indigo-600 hover:underline">Login here</a></p>
+        </div>
+
+
+        <!-- CEO Login Panel (hidden by default) -->
+        <div id="ceoLoginPanel" class="panel hidden">
+            <h3 class="text-xl font-semibold mb-4 text-center">CEO Login</h3>
+            <form id="ceoLoginForm" class="space-y-4">
+                <div>
+                    <label for="ceoLoginEmail" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="ceoLoginEmail" name="ceoLoginEmail" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="ceoLoginPassword" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="ceoLoginPassword" name="ceoLoginPassword" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <button type="submit" class="w-full bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">CEO Login</button>
+                <p id="ceoLoginMsg" class="text-center text-sm mt-2 hidden"></p>
+            </form>
+            <p class="text-center text-sm mt-4">Not CEO? <a href="#" onclick="showAdminLoginRegister()" class="text-indigo-600 hover:underline">Back to Admin/Leader Login</a></p>
+        </div>
+
+        <!-- Leader Panel (hidden by default) -->
+        <div id="leaderPanel" class="panel hidden">
+            <h3 class="text-xl font-semibold mb-4 text-center">Team Leader Dashboard</h3>
+            <p class="text-center text-gray-700 mb-4">Welcome, <span id="leaderNameDisplay" class="font-bold text-blue-600">Leader</span>!</p>
+
+            <!-- Tabs for Leader Dashboard -->
+            <div class="flex border-b border-gray-200 mb-4">
+                <button class="tab-button active-tab" onclick="openLeaderTab(event, 'leaderPayments')">Pending Payments</button>
+                <button class="tab-button" onclick="openLeaderTab(event, 'leaderMessages')">User Messages</button>
+                <button class="tab-button" onclick="openLeaderTab(event, 'leaderRotation')">Rotation Management</button>
+                <button class="tab-button" onclick="openLeaderTab(event, 'leaderUsers')">Manage Users</button>
+                <button class="tab-button" onclick="openLeaderTab(event, 'leaderReferral')">Referral Code</button>
+            </div>
+
+            <!-- Pending Payments Tab Content -->
+            <div id="leaderPayments" class="tab-content">
+                <h4 class="font-semibold text-lg mb-2">Pending Payments for Validation</h4>
+                <ul id="pendingPaymentsList" class="list-disc list-inside space-y-2">
+                    <!-- Payments will be loaded here by JavaScript -->
+                </ul>
+                <p id="noPendingPayments" class="text-center text-gray-500 mt-4">No pending payments.</p>
+            </div>
+
+            <!-- User Messages Tab Content -->
+            <div id="leaderMessages" class="tab-content hidden">
+                <h4 class="font-semibold text-lg mb-2">User Messages</h4>
+                <ul id="userMessagesList" class="list-disc list-inside space-y-2">
+                    <!-- Messages will be loaded here by JavaScript -->
+                </ul>
+                <p id="noUserMessages" class="text-center text-gray-500 mt-4">No user messages.</p>
+            </div>
+
+            <!-- Rotation Management Tab Content -->
+            <div id="leaderRotation" class="tab-content hidden">
+                <h4 class="font-semibold text-lg mb-2">Rotation Management</h4>
+                <div class="space-y-4">
+                    <div>
+                        <p>Current Rotation Day: <span id="currentRotationDay" class="font-bold">0</span></p>
+                        <p>Current Recipient: <span id="currentRecipientDisplay" class="font-bold">N/A</span></p>
+                    </div>
+                    <div>
+                        <label for="dailyInvest" class="block text-sm font-medium text-gray-700">Daily Investment Amount ($)</label>
+                        <input type="number" id="dailyInvest" value="10" min="1" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                        <button onclick="saveRotationSettings()" class="mt-2 bg-green-500 text-white p-2 rounded-md hover:bg-green-600">Save Daily Investment</button>
+                    </div>
+                    <div>
+                        <button onclick="nextParticipant()" class="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Advance Rotation to Next Participant</button>
+                        <p id="rotationStatusMsg" class="text-center text-sm mt-2 hidden"></p>
+                    </div>
+                    <div>
+                        <h5 class="font-semibold mt-4 mb-2">Add Participants to Rotation:</h5>
+                        <select id="availableMembersSelect" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                            <option value="">-- Select Paid & Active Member --</option>
+                            <!-- Options populated by JS -->
+                        </select>
+                        <button onclick="addParticipantToRotation()" class="mt-2 bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600">Add Selected Member</button>
+                        <p id="addParticipantMsg" class="text-center text-sm mt-2 hidden"></p>
+                    </div>
+                    <h5 class="font-semibold mt-4 mb-2">Current Participants in Rotation:</h5>
+                    <ul id="rotationParticipantsList" class="list-disc list-inside space-y-1">
+                        <!-- Participants will be loaded here by JavaScript -->
+                    </ul>
+                    <p id="noActiveParticipants" class="text-center text-gray-500 mt-4">No participants in rotation yet.</p>
+                </div>
+            </div>
+
+            <!-- Manage Users Tab Content -->
+            <div id="leaderUsers" class="tab-content hidden">
+                <h4 class="font-semibold text-lg mb-2">Manage All Users</h4>
+                <div class="overflow-x-auto">
+                    <table id="adminUsersTable" class="min-w-full bg-white border border-gray-200">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b">Name</th>
+                                <th class="py-2 px-4 border-b">Email</th>
+                                <th class="py-2 px-4 border-b">Role</th>
+                                <th class="py-2 px-4 border-b">Payment Status</th>
+                                <th class="py-2 px-4 border-b">Account Status</th>
+                                <th class="py-2 px-4 border-b">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- User data will be loaded here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                <p id="noUsersFound" class="text-center text-gray-500 mt-4">No users found.</p>
+            </div>
+
+            <!-- Referral Code Tab Content -->
+            <div id="leaderReferral" class="tab-content hidden">
+                <h4 class="font-semibold text-lg mb-2">Generate Referral Code</h4>
+                <p class="mb-4">Generate a unique referral code for new members to use during sign up.</p>
+                <button onclick="generateReferralCode()" class="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Generate New Code</button>
+                <p id="generatedReferralCodeMsg" class="text-center text-sm mt-2 hidden"></p>
+                <p class="mt-4 text-lg font-bold text-center">Your Code: <span id="generatedReferralCode" class="text-green-600"></span></p>
+            </div>
+
+            <button onclick="logoutLeader()" class="w-full bg-red-600 text-white p-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 mt-6">Logout Leader</button>
+        </div>
+
+        <!-- CEO Panel (hidden by default) -->
+        <div id="ceoPanel" class="panel hidden">
+            <h3 class="text-xl font-semibold mb-4 text-center">CEO Dashboard</h3>
+            <p class="text-center text-gray-700 mb-4">Welcome, CEO!</p>
+
+            <!-- Tabs for CEO Dashboard -->
+            <div class="flex border-b border-gray-200 mb-4">
+                <button class="tab-button active-tab" onclick="openCEOTab(event, 'ceoRotationHistory')">Rotation History</button>
+                <button class="tab-button" onclick="openCEOTab(event, 'ceoAdminHistory')">Admin Activity</button>
+                <button class="tab-button" onclick="openCEOTab(event, 'ceoGeneralHistory')">General History</button>
+                <button class="tab-button" onclick="openCEOTab(event, 'ceoAddAdmin')">Add New Admin</button>
+            </div>
+
+            <!-- Rotation History Tab Content -->
+            <div id="ceoRotationHistory" class="tab-content">
+                <h4 class="font-semibold text-lg mb-2">Rotation History</h4>
+                <div class="overflow-x-auto">
+                    <table id="ceoRotationHistoryTable" class="min-w-full bg-white border border-gray-200">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b">Day</th>
+                                <th class="py-2 px-4 border-b">Recipient</th>
+                                <th class="py-2 px-4 border-b">Daily Invest</th>
+                                <th class="py-2 px-4 border-b">Total Pool</th>
+                                <th class="py-2 px-4 border-b">Recipient Gain</th>
+                                <th class="py-2 px-4 border-b">Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Rotation history will be loaded here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                <p id="noRotationHistory" class="text-center text-gray-500 mt-4">No rotation history available.</p>
+                <button onclick="exportTableToCSV('ceoRotationHistoryTable', 'rotation_history.csv')" class="mt-4 bg-green-500 text-white p-2 rounded-md hover:bg-green-600">Export to CSV</button>
+            </div>
+
+            <!-- Admin Activity History Tab Content -->
+            <div id="ceoAdminHistory" class="tab-content hidden">
+                <h4 class="font-semibold text-lg mb-2">Admin Activity History</h4>
+                <div class="overflow-x-auto">
+                    <table id="adminHistoryTable" class="min-w-full bg-white border border-gray-200">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b">Timestamp</th>
+                                <th class="py-2 px-4 border-b">Type</th>
+                                <th class="py-2 px-4 border-b">Description</th>
+                                <th class="py-2 px-4 border-b">Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Admin history will be loaded here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                <p id="noAdminHistory" class="text-center text-gray-500 mt-4">No admin activity history available.</p>
+                <button onclick="exportTableToCSV('adminHistoryTable', 'admin_activity_history.csv')" class="mt-4 bg-green-500 text-white p-2 rounded-md hover:bg-green-600">Export to CSV</button>
+            </div>
+
+            <!-- General History Tab Content (NEW) -->
+            <div id="ceoGeneralHistory" class="tab-content hidden">
+                <h4 class="font-semibold text-lg mb-2">General System History</h4>
+                <div class="overflow-x-auto">
+                    <table id="generalHistoryTable" class="min-w-full bg-white border border-gray-200">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b">Timestamp</th>
+                                <th class="py-2 px-4 border-b">Type</th>
+                                <th class="py-2 px-4 border-b">Description</th>
+                                <th class="py-2 px-4 border-b">Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- General history will be loaded here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                <p id="noGeneralHistory" class="text-center text-gray-500 mt-4">No general system history available.</p>
+                <button onclick="exportTableToCSV('generalHistoryTable', 'general_history.csv')" class="mt-4 bg-green-500 text-white p-2 rounded-md hover:bg-green-600">Export to CSV</button>
+            </div>
+
+
+            <!-- Add New Admin Tab Content -->
+            <div id="ceoAddAdmin" class="tab-content hidden">
+                <h4 class="font-semibold text-lg mb-2">Add New Team Leader / Admin</h4>
+                <form id="newAdminForm" class="space-y-4">
+                    <div>
+                        <label for="newAdminFirstName" class="block text-sm font-medium text-gray-700">First Name</label>
+                        <input type="text" id="newAdminFirstName" name="newAdminFirstName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                    </div>
+                    <div>
+                        <label for="newAdminLastName" class="block text-sm font-medium text-gray-700">Last Name</label>
+                        <input type="text" id="newAdminLastName" name="newAdminLastName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                    </div>
+                    <div>
+                        <label for="newAdminPhoneNumber" class="block text-sm font-medium text-gray-700">Phone Number</label>
+                        <input type="tel" id="newAdminPhoneNumber" name="newAdminPhoneNumber" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                    </div>
+                    <div>
+                        <label for="newAdminEmail" class="block text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" id="newAdminEmail" name="newAdminEmail" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                    </div>
+                    <div>
+                        <label for="newAdminPass" class="block text-sm font-medium text-gray-700">Password</label>
+                        <input type="password" id="newAdminPass" name="newAdminPass" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
+                    </div>
+                    <button type="button" onclick="addAdmin()" class="w-full bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">Add Admin</button>
+                    <p id="newAdminMsg" class="text-center text-sm mt-2 hidden"></p>
+                </form>
+            </div>
+
+            <button onclick="logoutCEO()" class="w-full bg-red-600 text-white p-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 mt-6">Logout CEO</button>
+        </div>
+
+        <!-- Contact Admin Panel (hidden by default) -->
+        <div id="contactAdminPanel" class="panel hidden">
+            <h3 class="text-xl font-semibold mb-4 text-center">Contact Admin</h3>
+            <p class="text-center text-gray-700 mb-4">If you have any issues or questions, please fill out the form below.</p>
+            <form id="contactAdminForm" class="space-y-4">
+                <div>
+                    <label for="contactEmail" class="block text-sm font-medium text-gray-700">Your Email</label>
+                    <input type="email" id="contactEmail" name="contactEmail" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="contactSubject" class="block text-sm font-medium text-gray-700">Subject</label>
+                    <input type="text" id="contactSubject" name="contactSubject" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label for="contactMessage" class="block text-sm font-medium text-gray-700">Message</label>
+                    <textarea id="contactMessage" name="contactMessage" rows="4" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required></textarea>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Send Message</button>
+                <p id="contactAdminMsg" class="text-center text-sm mt-2 hidden"></p>
+            </form>
+            <p class="text-center text-sm mt-4"><a href="#" onclick="showLogin()" class="text-indigo-600 hover:underline">Back to Login</a></p>
+        </div>
+
     </div>
 
-    <hr>
-    <h3>👥 User Accounts Management:</h3>
-    <table id="adminUsersTable">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Paid</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            </tbody>
-    </table>
-    <p id="noUsersFound" style="font-style: italic;">No users registered yet.</p>
+    <!-- Tab Script for Leader/CEO Dashboards -->
+    <script>
+        function openLeaderTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.add("hidden");
+            }
+            tablinks = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active-tab");
+            }
+            document.getElementById(tabName).classList.remove("hidden");
+            evt.currentTarget.classList.add("active-tab");
 
-    <hr>
-    <div class="referral-section">
-        <h3>🔗 Referral Code Generator</h3>
-        <button onclick="generateReferralCode()">Generate New Referral Code</button>
-        <p id="generatedReferralCodeMsg" class="hidden"></p>
-        <p id="generatedReferralCode"></p>
-    </div>
+            // Trigger data fetch for the newly opened tab
+            if (tabName === 'leaderPayments') {
+                fetchPendingPayments();
+            } else if (tabName === 'leaderMessages') {
+                fetchUserMessages();
+            } else if (tabName === 'leaderRotation') {
+                fetchRotationData();
+            } else if (tabName === 'leaderUsers') {
+                fetchAllUsersForAdmin();
+            } else if (tabName === 'leaderReferral') {
+                // No specific fetch needed, but ensure UI is ready
+            }
+        }
 
-    <p style="font-size: 0.9em; color: #666; margin-top: 20px;">
-        <em>Note: All user, payment, and rotation data is simulated and will reset when the server (`server.js`) is restarted.</em>
-    </p>
-</div>
+        function openCEOTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.add("hidden");
+            }
+            tablinks = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active-tab");
+            }
+            document.getElementById(tabName).classList.remove("hidden");
+            evt.currentTarget.classList.add("active-tab");
 
-<div id="ceoPanel" class="panel hidden">
-    <h2>👑 CEO Dashboard</h2>
-    <p>Welcome, CEO!</p>
-    <div class="logout-btn">
-        <button onclick="logoutCEO()">Logout CEO</button>
-    </div>
+            // Trigger data fetch for the newly opened tab
+            if (tabName === 'ceoRotationHistory') {
+                fetchCEORotationHistory();
+            } else if (tabName === 'ceoAdminHistory') {
+                fetchAdminHistory();
+            } else if (tabName === 'ceoGeneralHistory') {
+                fetchGeneralHistory();
+            } else if (tabName === 'ceoAddAdmin') {
+                // No specific fetch needed for this tab, it's a form
+            }
+        }
 
-    <hr>
-    <div style="margin-top: 20px; padding: 15px; background-color: #f0f0f0; border-radius: 8px;">
-        <h3>Outils d'Administration Avancés</h3>
-        <p>Accéder au système de rotation et gestion d'admin : 
-            <a href="https://jid33.github.io/link-to-ceo-users-leader-dashboard/" target="_blank" 
-              style="background-color: #004080; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px;">
-                    Rotation D2B1 (Mode Avancé)
-                  </a>
-        </p>
-    </div>
-    <hr>
-    <h3>📈 Rotation History (Last 25 Days):</h3>
-    <table id="ceoRotationHistoryTable">
-        <thead>
-            <tr>
-                <th>Day</th>
-                <th>Recipient</th>
-                <th>Invest ($)</th>
-                <th>Total Pool ($)</th>
-                <th>Gain ($)</th>
-                <th>Date/Time</th>
-            </tr>
-        </thead>
-        <tbody>
-            </tbody>
-    </table>
-    <p id="noRotationHistory" class="hidden">No rotation history available yet.</p>
+        // Initialize first tab as active on load for Leader/CEO panels
+        document.addEventListener('DOMContentLoaded', () => {
+            const leaderPanel = document.getElementById('leaderPanel');
+            const ceoPanel = document.getElementById('ceoPanel');
 
-    <hr>
-    <h3>📊 System Activity History:</h3>
-    <table id="adminHistoryTable">
-        <thead>
-            <tr>
-                <th>Timestamp</th>
-                <th>Type</th>
-                <th>Description</th>
-                <th>Details</th>
-            </tr>
-        </thead>
-        <tbody>
-            </tbody>
-    </table>
-    <p id="noAdminHistory" class="hidden">No system history available yet.</p>
-    
-    <hr>
-    <!-- NEW: All System History Section for CEO -->
-    <h3>📜 All System History:</h3>
-    <button class="export-button" onclick="exportTableToCSV('generalHistoryTable', 'all_system_history.csv')">Export All History to CSV</button>
-    <table id="generalHistoryTable">
-        <thead>
-            <tr>
-                <th>Timestamp</th>
-                <th>Type</th>
-                <th>Description</th>
-                <th>Details</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- History entries will be loaded here by JavaScript -->
-        </tbody>
-    </table>
-    <p id="noGeneralHistory" class="hidden">No general system history available yet.</p>
-    <!-- END NEW: All System History Section -->
-
-    <hr>
-    <div class="form-section">
-        <h3>👥 Add New Admin (CEO Only)</h3>
-        <p>Use this section to create new Team Leader accounts.</p>
-        <label for="newAdminFirstName">First Name:</label>
-        <input type="text" id="newAdminFirstName" placeholder="Enter first name">
-
-        <label for="newAdminLastName">Last Name:</label>
-        <input type="text" id="newAdminLastName" placeholder="Enter last name">
-
-        <label for="newAdminPhoneNumber">Phone Number:</label>
-        <input type="tel" id="newAdminPhoneNumber" placeholder="Enter phone number">
-
-        <label for="newAdminEmail">Email:</label>
-        <input type="email" id="newAdminEmail" placeholder="Enter email">
-
-        <label for="newAdminPass">Create Password:</label>
-        <input type="password" id="newAdminPass" placeholder="Create password">
-
-        <button onclick="addAdmin()">Add New Admin</button>
-        <p id="newAdminMsg"></p>
-    </div>
-
-    <button style="margin-top: 20px;" onclick="calculRotation()">Generate Comprehensive Report (Future Feature)</button>
-    <p id="ceoReportMsg" class="hidden" style="margin-top: 10px;"></p>
-    <p style="font-size: 0.9em; color: #666; margin-top: 20px;">
-        <em>Note: All user, payment, and rotation data is simulated and will reset when the server (`server.js`) is restarted.</em>
-    </p>
-</div>
-
+            if (!leaderPanel.classList.contains('hidden')) {
+                const firstLeaderTabButton = leaderPanel.querySelector('.tab-button');
+                if (firstLeaderTabButton) {
+                    firstLeaderTabButton.click(); // Simulate click to activate and fetch data
+                }
+            } else if (!ceoPanel.classList.contains('hidden')) {
+                const firstCEOTabButton = ceoPanel.querySelector('.tab-button');
+                if (firstCEOTabButton) {
+                    firstCEOTabButton.click(); // Simulate click to activate and fetch data
+                }
+            }
+        });
+    </script>
+    <!-- Link to your JavaScript file -->
+    <script src="script.js"></script>
 </body>
 </html>
