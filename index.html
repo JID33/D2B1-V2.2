@@ -6,6 +6,7 @@
     <title>Dream2Build</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <!-- Custom styles for tabs are now in style.css -->
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
@@ -227,8 +228,8 @@
             <h3 class="text-xl font-semibold mb-4 text-center">Team Leader Dashboard</h3>
             <p class="text-center text-gray-700 mb-4">Welcome, <span id="leaderNameDisplay" class="font-bold text-blue-600">Leader</span>!</p>
 
-            <!-- Tabs for Leader Dashboard -->
-            <div class="flex border-b border-gray-200 mb-4">
+            <!-- Tabs for Leader Dashboard - Adjusted for better layout -->
+            <div class="tab-container">
                 <button class="tab-button active-tab" onclick="openLeaderTab(event, 'leaderPayments')">Pending Payments</button>
                 <button class="tab-button" onclick="openLeaderTab(event, 'leaderMessages')">User Messages</button>
                 <button class="tab-button" onclick="openLeaderTab(event, 'leaderRotation')">Rotation Management</button>
@@ -328,8 +329,8 @@
             <h3 class="text-xl font-semibold mb-4 text-center">CEO Dashboard</h3>
             <p class="text-center text-gray-700 mb-4">Welcome, CEO!</p>
 
-            <!-- Tabs for CEO Dashboard -->
-            <div class="flex border-b border-gray-200 mb-4">
+            <!-- Tabs for CEO Dashboard - Adjusted for better layout -->
+            <div class="tab-container">
                 <button class="tab-button active-tab" onclick="openCEOTab(event, 'ceoRotationHistory')">Rotation History</button>
                 <button class="tab-button" onclick="openCEOTab(event, 'ceoAdminHistory')">Admin Activity</button>
                 <button class="tab-button" onclick="openCEOTab(event, 'ceoGeneralHistory')">General History</button>
