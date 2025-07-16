@@ -238,6 +238,55 @@ app.post('/api/contact-admin', async (req, res) => {
     }
 });
 
+// Leader Registration Route (NEWLY ADDED)
+app.post('/api/leader-register', async (req, res) => {
+    const { username, password, firstName, lastName, phoneNumber, role } = req.body;
+    if (!username || !password || !firstName || !lastName || !phoneNumber || !role) {
+        return res.status(400).json({ message: 'All fields are required for leader registration.' });
+    }
+
+    try {
+        let users = await readJsonFile(USERS_FILE);
+
+        if (users.some(user => user.username === username)) {
+            return res.status(409).json({ message: 'Leader with this email already exists.' });
+        }
+
+        const newLeader = {
+            id: uuidv4(),
+            username,
+            password, // In a real app, hash the password using bcrypt before saving!
+            firstName,
+            lastName,
+            phoneNumber,
+            role: 'leader', // Ensure the role is explicitly set to 'leader'
+            isPaid: true, // Leaders are generally considered paid/active
+            isActive: true
+        };
+
+        users.push(newLeader);
+        await writeJsonFile(USERS_FILE, users);
+
+        // Log this action for general history
+        let generalHistory = await readJsonFile(ADMIN_ACTIVITY_FILE);
+        generalHistory.push({
+            id: uuidv4(),
+            timestamp: new Date().toISOString(),
+            type: 'New Leader Registered',
+            description: `New leader registered: ${firstName} ${lastName} (${username}).`,
+            details: { leaderId: newLeader.id, username }
+        });
+        await writeJsonFile(ADMIN_ACTIVITY_FILE, generalHistory);
+
+        res.status(201).json({ message: 'Leader registered successfully!', leader: { id: newLeader.id, username: newLeader.username, fullName: `${firstName} ${lastName}` } });
+
+    } catch (error) {
+        console.error('Error during leader registration:', error);
+        res.status(500).json({ message: 'Server error during leader registration.', error: error.message });
+    }
+});
+
+
 // Leader Login Route
 app.post('/api/leader-login', async (req, res) => {
     const { username, password } = req.body;
@@ -777,7 +826,7 @@ app.get('/api/ceo/rotation-history', authenticateToken, async (req, res) => {
     try {
         const history = await readJsonFile(ROTATION_HISTORY_FILE);
         res.json(history);
-    } catch (error) {
+    }  catch (error) {
         console.error('Error fetching CEO rotation history:', error);
         res.status(500).json({ message: 'Server error fetching CEO rotation history.', error: error.message });
     }
