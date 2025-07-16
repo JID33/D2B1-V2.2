@@ -35,7 +35,7 @@ function displayTempMessage(message, isSuccess = true) {
 
 // --- Configuration for your Backend API ---
 // IMPORTANT: Replace this with your actual backend server's URL when deployed!
-const API_BASE_URL = 'http://localhost:3000/api'; // For local testing, assuming backend runs on port 3000
+const API_BASE_URL = 'https://dream2build-api.onrender.com/api'; // UPDATED TO RENDER URL
 
 // --- Helper Functions to Toggle Panels ---
 function hideAllPanels() {
