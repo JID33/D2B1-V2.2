@@ -973,7 +973,8 @@ async function fetchAllUsersForAdmin() {
         } else {
             document.getElementById('noUsersFound').classList.remove('hidden');
         }
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error fetching all users for admin:', error);
         document.getElementById('noUsersFound').textContent = 'Error loading users.';
         document.getElementById('noUsersFound').classList.remove('hidden');
