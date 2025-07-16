@@ -383,9 +383,9 @@
             <h3>Outils et Rapports</h3>
             <p>Accédez au système de rotation en ligne : 
                <a href="https://jid33.github.io/link-to-ceo-users-leader-dashboard/" target="_blank" 
-                  style="background-color: #28a745; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px;">
-                  Rotation en ligne D2B1
-               </a>
+                 style="background-color: #28a745; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px;">
+                     Rotation en ligne D2B1
+                 </a>
             </p>
         </div>
         </div>
@@ -413,11 +413,35 @@
     <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="event.preventDefault(); showLogin();">Back to Login</a></p>
 </div>
 
+<!-- UPDATED LEADER REGISTER PANEL START -->
 <div class="form-section hidden" id="leaderRegisterPanel">
     <h2>👥 Register New Team Leader</h2>
-    <p>This section is for new Team Leaders to register themselves. The CEO adds new leaders from their dashboard.</p>
+    <p>Please use the form below to register as a new Team Leader.</p>
+    <form id="leaderRegisterForm">
+        <label for="newLeaderFirstName">First Name:</label>
+        <input type="text" id="newLeaderFirstName" name="newLeaderFirstName" placeholder="Enter first name" required>
+
+        <label for="newLeaderLastName">Last Name:</label>
+        <input type="text" id="newLeaderLastName" name="newLeaderLastName" placeholder="Enter last name" required>
+
+        <label for="newLeaderPhoneNumber">Phone Number:</label>
+        <input type="tel" id="newLeaderPhoneNumber" name="newLeaderPhoneNumber" placeholder="e.g., +150912345678" required>
+
+        <label for="newLeaderEmail">Email:</label>
+        <input type="email" id="newLeaderEmail" name="newLeaderEmail" placeholder="Enter email" required>
+
+        <label for="newLeaderPassword">Create Password:</label>
+        <input type="password" id="newLeaderPassword" name="newLeaderPassword" placeholder="Create password" required>
+
+        <label for="newLeaderConfirmPassword">Confirm Password:</label>
+        <input type="password" id="newLeaderConfirmPassword" name="newLeaderConfirmPassword" placeholder="Re-enter password" required>
+
+        <button type="submit">Register as Leader</button>
+        <p id="leaderRegisterMsg" class="hidden"></p>
+    </form>
     <p style="text-align: center; margin-top: 15px;">Already registered? <a href="#" onclick="event.preventDefault(); showLeaderLoginOnly();">Login here</a></p>
 </div>
+<!-- UPDATED LEADER REGISTER PANEL END -->
 
 <div class="form-section hidden" id="leaderLoginPanel">
     <h2>🔐 Team Leader Login (Admin Only)</h2>
@@ -465,9 +489,9 @@
         <h3>Accès Rapide</h3>
         <p>Gérer le système de rotation en ligne : 
            <a href="https://jid33.github.io/link-to-ceo-users-leader-dashboard/" target="_blank" 
-              style="background-color: #007BFF; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px;">
-              Rotation D2B1 (Admin)
-           </a>
+             style="background-color: #007BFF; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px;">
+                 Rotation D2B1 (Admin)
+             </a>
         </p>
     </div>
     <hr>
@@ -551,9 +575,9 @@
         <h3>Outils d'Administration Avancés</h3>
         <p>Accéder au système de rotation et gestion d'admin : 
            <a href="https://jid33.github.io/link-to-ceo-users-leader-dashboard/" target="_blank" 
-              style="background-color: #004080; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px;">
-              Rotation D2B1 (Mode Avancé)
-           </a>
+             style="background-color: #004080; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; display: inline-block; margin-top: 10px;">
+                 Rotation D2B1 (Mode Avancé)
+             </a>
         </p>
     </div>
     <hr>
