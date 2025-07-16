@@ -1254,6 +1254,7 @@ async function addAdmin() {
         console.error('Error adding new admin:', error);
         newAdminMsg.textContent = 'Network error. Please try again.';
         newAdminMsg.classList.remove('hidden');
+        newAdminMsg.classList.remove('success-msg');
         newAdminMsg.classList.add('error-msg');
         displayTempMessage('Network error adding admin.', false);
     }
