@@ -1,668 +1,1353 @@
-// C:\Users\ASUS\dream2build-backend\server.js
+console.log("Script loaded successfully!"); // Added for debugging
 
-require('dotenv').config();
+// Function to display temporary messages (replaces alerts)
+function displayTempMessage(message, isSuccess = true) {
+    const msgDiv = document.createElement('div');
+    msgDiv.textContent = message;
+    msgDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 15px 25px;
+        background-color: ${isSuccess ? '#d4edda' : '#f8d7da'};
+        color: ${isSuccess ? '#155724' : '#721c24'};
+        border: 1px solid ${isSuccess ? '#c3e6cb' : '#f5c6cb'};
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        z-index: 1000;
+        font-weight: bold;
+        opacity: 0;
+        transition: opacity 0.5s ease-in-out;
+    `;
+    document.body.appendChild(msgDiv);
 
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
-const { MongoClient, ObjectId } = require('mongodb'); // Import MongoClient and ObjectId
+    setTimeout(() => {
+        msgDiv.style.opacity = '1';
+    }, 10); // Small delay to allow transition
 
-const app = express();
+    setTimeout(() => {
+        msgDiv.style.opacity = '0';
+        msgDiv.addEventListener('transitionend', () => msgDiv.remove());
+    }, 3000); // Message disappears after 3 seconds
+}
 
-const PORT = process.env.PORT || 3000;
-const SECRET_KEY = process.env.SECRET_KEY || 'default_secret_key'; // CHANGE THIS IN PRODUCTION!
-const MONGO_URI = process.env.MONGO_URI; // Get MongoDB URI from environment variables
 
-// MongoDB Client and Database references
-let db;
-let usersCollection;
-let historyCollection;
-let pendingPaymentsCollection;
-let rotationDataCollection;
-let messagesCollection; // For contact admin messages
+// --- Configuration for your Backend API ---
+// IMPORTANT: Replace this with your actual backend server's URL when deployed!
+const API_BASE_URL = 'https://dream2build-api.onrender.com/api'; // UPDATED TO RENDER URL
 
-app.use(bodyParser.json());
-app.use(cors());
+// --- Helper Functions to Toggle Panels ---
+function hideAllPanels() {
+    console.log('FUNC: hideAllPanels called. Hiding all panels...');
+    document.getElementById('signUpPanel').classList.add('hidden');
+    document.getElementById('loginPanel').classList.add('hidden');
+    document.getElementById('verificationMessagePanel').classList.add('hidden');
+    document.getElementById('paymentPanel').classList.add('hidden');
+    document.getElementById('mainPlatformPanel').classList.add('hidden');
+    document.getElementById('leaderRegisterPanel').classList.add('hidden'); // Add Admin panel
+    document.getElementById('leaderLoginPanel').classList.add('hidden');
+    document.getElementById('ceoLoginPanel').classList.add('hidden');
+    document.getElementById('leaderPanel').classList.add('hidden');
+    document.getElementById('ceoPanel').classList.add('hidden');
+    document.getElementById('contactAdminPanel').classList.add('hidden');
+    console.log('FUNC: hideAllPanels completed. All panels hidden.');
+}
 
-// --- MongoDB Connection ---
-async function connectDB() {
-    if (!MONGO_URI) {
-        console.error('MONGO_URI is not defined in environment variables. Cannot connect to MongoDB.');
-        process.exit(1); // Exit if no MongoDB URI
+function showSignUp() {
+    console.log('FUNC: showSignUp called. Attempting to show Sign Up panel...');
+    hideAllPanels();
+    document.getElementById('signUpPanel').classList.remove('hidden');
+    console.log('FUNC: showSignUp completed. Sign Up panel should be visible.');
+}
+
+function showLogin() {
+    console.log('FUNC: showLogin called. Attempting to show Login panel...');
+    hideAllPanels();
+    const loginPanel = document.getElementById('loginPanel');
+    if (loginPanel) {
+        loginPanel.classList.remove('hidden');
+        loginPanel.style.display = 'block'; // Ensure it's displayed
+        console.log('FUNC: showLogin completed. Login panel should be visible.');
+    } else {
+        console.error('ERROR: loginPanel element not found!');
+    }
+}
+
+function showVerificationMessage(email) {
+    console.log('FUNC: showVerificationMessage called for email:', email);
+    hideAllPanels();
+    document.getElementById('verificationMessagePanel').classList.remove('hidden');
+    document.getElementById('verificationEmailDisplay').textContent = email;
+    console.log('FUNC: showVerificationMessage completed. Verification panel should be visible.');
+}
+
+// New functions to show only one admin/leader panel at a time
+function showLeaderLoginOnly() {
+    console.log('FUNC: showLeaderLoginOnly called. Attempting to show Leader Login panel only...');
+    hideAllPanels();
+    document.getElementById('leaderLoginPanel').classList.remove('hidden');
+    console.log('FUNC: showLeaderLoginOnly completed. Leader Login panel should be visible.');
+}
+
+function showLeaderRegisterOnly() {
+    console.log('FUNC: showLeaderRegisterOnly called. Attempting to show Leader Register panel only...');
+    hideAllPanels();
+    document.getElementById('leaderRegisterPanel').classList.remove('hidden');
+    console.log('FUNC: showLeaderRegisterOnly completed. Leader Register panel should be visible.');
+}
+
+function showAdminLoginRegister() {
+    console.log('FUNC: showAdminLoginRegister called. Showing Leader Login by default.');
+    showLeaderLoginOnly(); // Default to showing leader login
+}
+
+function showCEOLogin() {
+    console.log('FUNC: showCEOLogin called. Attempting to show CEO Login panel only...');
+    hideAllPanels();
+    document.getElementById('ceoLoginPanel').classList.remove('hidden');
+    console.log('FUNC: showCEOLogin completed. CEO Login panel should be visible.');
+}
+
+function showContactAdmin() {
+    console.log('FUNC: showContactAdmin called. Attempting to show Contact Admin panel only...');
+    hideAllPanels();
+    document.getElementById('contactAdminPanel').classList.remove('hidden');
+    console.log('FUNC: showContactAdmin completed. Contact Admin panel should be visible.');
+}
+
+// Function to get current user/admin token (simulated for frontend)
+// In a real app, this would get token from cookie or sessionStorage
+let currentAuthToken = localStorage.getItem('authToken');
+let currentUserData = JSON.parse(localStorage.getItem('currentUserData') || '{}'); // Stores role, name, email etc.
+
+function saveAuthData(token, userData) {
+    console.log('FUNC: saveAuthData called. Saving token and user data to localStorage.');
+    currentAuthToken = token;
+    currentUserData = userData;
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('currentUserData', JSON.stringify(userData));
+}
+
+function clearAuthData() {
+    console.log('FUNC: clearAuthData called. Clearing token and user data from localStorage.');
+    currentAuthToken = null;
+    currentUserData = {};
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUserData');
+}
+
+// --- Panel Show Functions (Adjusted for Backend Data) ---
+async function showPaymentPanel(userEmail) {
+    console.log('FUNC: showPaymentPanel called for email:', userEmail);
+    hideAllPanels();
+    document.getElementById('paymentPanel').classList.remove('hidden');
+    document.getElementById('paymentPanel').dataset.currentUserEmail = userEmail;
+
+    try {
+        document.getElementById('paymentUserName').textContent = currentUserData.fullName || currentUserData.email;
+        console.log('Payment panel should be visible. Displaying user:', currentUserData.fullName || currentUserData.email);
+    } catch (error) {
+        console.error('ERROR: Error fetching user data for payment panel:', error);
+        document.getElementById('paymentUserName').textContent = 'User';
+    }
+}
+
+async function showMainPlatform(userName, userInvest, userGain, userReferralCode) {
+    console.log('FUNC: showMainPlatform called for user:', userName);
+    hideAllPanels();
+    document.getElementById('mainPlatformPanel').classList.remove('hidden');
+    document.getElementById('loggedInUserName').textContent = userName;
+
+    const adminAreaNote = document.getElementById('adminAreaNote');
+    const participantFinancials = document.getElementById('participantFinancials');
+
+    // Only show financial details for regular users
+    if (currentUserData.role === 'user') {
+        adminAreaNote.textContent = ''; // Clear any previous text
+        participantFinancials.classList.remove('hidden'); // Ensure it's visible for users
+        document.getElementById('participantInvest').textContent = userInvest !== undefined ? userInvest.toFixed(2) : '0.00';
+        document.getElementById('participantGain').textContent = userGain !== undefined ? userGain.toFixed(2) : '0.00';
+        document.getElementById('participantReferralCode').textContent = userReferralCode || 'N/A';
+    } else if (currentUserData.role === 'leader') {
+        adminAreaNote.textContent = 'You have Team Leader access. Check the "Team Leader Dashboard" section.';
+        participantFinancials.classList.add('hidden'); // Hide for leaders
+    } else if (currentUserData.role === 'ceo') {
+        adminAreaNote.textContent = 'You have CEO access. Check the "CEO Dashboard" section.';
+        participantFinancials.classList.add('hidden'); // Hide for CEO
+    } else {
+        adminAreaNote.textContent = 'Your role is not specified.';
+        participantFinancials.classList.add('hidden'); // Hide for unknown roles
+    }
+    console.log('FUNC: showMainPlatform completed. Main platform should be visible.');
+}
+
+// --- Authentication and API Call Functions ---
+
+// Handle Sign Up Form Submission
+document.getElementById('signUpForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    console.log('Sign Up form submitted.');
+
+    const firstName = document.getElementById('firstName').value;
+    const lastName = document.getElementById('lastName').value;
+    const phoneNumber = document.getElementById('phoneNumber').value;
+    const email = document.getElementById('email').value; // This will be 'username' for backend
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    const referralCode = document.getElementById('referralCode').value;
+    const signUpMsg = document.getElementById('signUpMsg');
+
+    signUpMsg.classList.add('hidden'); // Hide previous messages
+
+    if (password !== confirmPassword) {
+        signUpMsg.textContent = 'Passwords do not match!';
+        signUpMsg.classList.remove('hidden');
+        signUpMsg.classList.remove('success-msg');
+        signUpMsg.classList.add('error-msg');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                // Backend expects 'username' and 'password'
+                username: email, // Mapping email input to backend's 'username'
+                password: password,
+                firstName,
+                lastName,
+                phoneNumber,
+                referralCode
+            })
+        });
+
+        const data = await response.json();
+        signUpMsg.textContent = data.message;
+        signUpMsg.classList.remove('hidden');
+
+        if (response.ok) {
+            signUpMsg.classList.remove('error-msg');
+            signUpMsg.classList.add('success-msg');
+            displayTempMessage('Registration successful! Please log in.', true);
+            // Simulate verification and show login panel
+            setTimeout(() => showVerificationMessage(email), 1000);
+        } else {
+            signUpMsg.classList.remove('success-msg');
+            signUpMsg.classList.add('error-msg');
+            displayTempMessage(`Registration failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error during sign up:', error);
+        signUpMsg.textContent = 'Network error. Please try again.';
+        signUpMsg.classList.remove('hidden');
+        signUpMsg.classList.remove('success-msg');
+        signUpMsg.classList.add('error-msg');
+        displayTempMessage('Network error during sign up.', false);
+    }
+});
+
+// Handle Login Form Submission
+document.getElementById('loginForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    console.log('Login form submitted.');
+
+    const email = document.getElementById('loginEmail').value; // This will be 'username' for backend
+    const password = document.getElementById('loginPassword').value;
+    const loginMsg = document.getElementById('loginMsg');
+
+    loginMsg.classList.add('hidden'); // Hide previous messages
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                // Backend expects 'username' and 'password'
+                username: email, // Mapping loginEmail input to backend's 'username'
+                password: password
+            })
+        });
+
+        const data = await response.json();
+        loginMsg.textContent = data.message;
+        loginMsg.classList.remove('hidden');
+
+        if (response.ok) {
+            loginMsg.classList.remove('error-msg');
+            loginMsg.classList.add('success-msg');
+            displayTempMessage('Login successful!', true);
+
+            // Save authentication token and user data, including isPaid and isActive
+            saveAuthData(data.token, {
+                email: email,
+                role: data.role || 'user',
+                fullName: data.fullName || email,
+                isPaid: data.isPaid,   // Use actual isPaid from backend
+                isActive: data.isActive // Use actual isActive from backend
+            });
+
+            // Redirect based on role and payment/active status
+            if (data.role === 'user') {
+                if (data.isPaid && data.isActive) {
+                    showMainPlatform(data.fullName || email, data.invest, data.gain, data.referralCode);
+                } else if (!data.isPaid) {
+                    showPaymentPanel(email);
+                } else { // User is active but not paid, or some other inactive state
+                    displayTempMessage('Your account is not active or payment is pending. Please contact support.', false);
+                    // Optionally, you might want a specific panel for inactive users
+                    // For now, keep them on login or show a generic message
+                    showLogin();
+                }
+            } else if (data.role === 'leader') {
+                showLeaderDashboard(data.fullName || email);
+            } else if (data.role === 'ceo') {
+                showCEODashboard();
+            } else {
+                // Fallback for unknown roles
+                displayTempMessage('Unknown user role. Please contact support.', false);
+                showLogin();
+            }
+
+        } else {
+            loginMsg.classList.remove('success-msg');
+            loginMsg.classList.add('error-msg');
+            displayTempMessage(`Login failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error during login:', error);
+        loginMsg.textContent = 'Network error. Please try again.';
+        loginMsg.classList.remove('hidden');
+        loginMsg.classList.remove('success-msg');
+        loginMsg.classList.add('error-msg');
+        displayTempMessage('Network error during login.', false);
+    }
+});
+
+// --- Other Form Submission Handlers (Add your backend calls here) ---
+
+// Handle Payment Form Submission
+document.getElementById('paymentForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    console.log('Payment form submitted.');
+
+    const paymentMethod = document.getElementById('paymentMethod').value;
+    const currentUserEmail = document.getElementById('paymentPanel').dataset.currentUserEmail;
+    const paymentMsg = document.getElementById('paymentMsg');
+
+    paymentMsg.classList.add('hidden');
+
+    // In a real app, you'd send payment details to your backend
+    try {
+        const response = await fetch(`${API_BASE_URL}/submit-payment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}` // Send token for authentication
+            },
+            body: JSON.stringify({
+                email: currentUserEmail,
+                method: paymentMethod,
+                // Include other payment details if applicable (e.g., card info)
+            })
+        });
+
+        const data = await response.json();
+        paymentMsg.textContent = data.message;
+        paymentMsg.classList.remove('hidden');
+
+        if (response.ok) {
+            paymentMsg.classList.remove('error-msg');
+            paymentMsg.classList.add('success-msg');
+            displayTempMessage('Payment info submitted! Awaiting validation.', true);
+            // After submitting payment, user should typically wait for leader validation
+            // No automatic redirect to main platform here, as validation is manual
+            showLogin(); // Go back to login, user can try again after validation
+        } else {
+            paymentMsg.classList.remove('success-msg');
+            paymentMsg.classList.add('error-msg');
+            displayTempMessage(`Payment submission failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error submitting payment:', error);
+        paymentMsg.textContent = 'Network error. Please try again.';
+        paymentMsg.classList.remove('hidden');
+        paymentMsg.classList.remove('success-msg');
+        paymentMsg.classList.add('error-msg');
+        displayTempMessage('Network error during payment submission.', false);
+    }
+});
+
+
+// Handle Contact Admin Form Submission
+document.getElementById('contactAdminForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    console.log('Contact Admin form submitted.');
+
+    const contactEmail = document.getElementById('contactEmail').value;
+    const contactSubject = document.getElementById('contactSubject').value;
+    const contactMessage = document.getElementById('contactMessage').value;
+    const contactAdminMsg = document.getElementById('contactAdminMsg');
+
+    contactAdminMsg.classList.add('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/contact-admin`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: contactEmail,
+                subject: contactSubject,
+                message: contactMessage
+            })
+        });
+
+        const data = await response.json();
+        contactAdminMsg.textContent = data.message;
+        contactAdminMsg.classList.remove('hidden');
+
+        if (response.ok) {
+            contactAdminMsg.classList.remove('error-msg');
+            contactAdminMsg.classList.add('success-msg');
+            displayTempMessage('Message sent successfully!', true);
+            document.getElementById('contactAdminForm').reset(); // Clear form
+        } else {
+            contactAdminMsg.classList.remove('success-msg');
+            contactAdminMsg.classList.add('error-msg');
+            displayTempMessage(`Failed to send message: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error sending contact message:', error);
+        contactAdminMsg.textContent = 'Network error. Please try again.';
+        contactAdminMsg.classList.remove('hidden');
+        contactAdminMsg.classList.remove('success-msg');
+        contactAdminMsg.classList.add('error-msg');
+        displayTempMessage('Network error sending message.', false);
+    }
+});
+
+
+// Handle Leader Login Form Submission
+document.getElementById('leaderLoginForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    console.log('Leader Login form submitted.');
+
+    const email = document.getElementById('loginLeaderEmail').value;
+    const password = document.getElementById('loginLeaderPass').value;
+    const leaderLoginMsg = document.getElementById('leaderLoginMsg');
+
+    leaderLoginMsg.classList.add('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/leader-login`, { // Assuming you'll add this endpoint
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username: email, password: password })
+        });
+
+        const data = await response.json();
+        leaderLoginMsg.textContent = data.message;
+        leaderLoginMsg.classList.remove('hidden');
+
+        if (response.ok) {
+            leaderLoginMsg.classList.remove('error-msg');
+            leaderLoginMsg.classList.add('success-msg');
+            displayTempMessage('Leader login successful!', true);
+            saveAuthData(data.token, { email: email, role: 'leader', fullName: data.fullName || email });
+            showLeaderDashboard(data.fullName || email); // Function to show leader dashboard
+        } else {
+            leaderLoginMsg.classList.remove('success-msg');
+            leaderLoginMsg.classList.add('error-msg');
+            displayTempMessage(`Leader login failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error during leader login:', error);
+        leaderLoginMsg.textContent = 'Network error. Please try again.';
+        leaderLoginMsg.classList.remove('hidden');
+        leaderLoginMsg.classList.remove('success-msg');
+        leaderLoginMsg.classList.add('error-msg');
+        displayTempMessage('Network error during leader login.', false);
+    }
+});
+
+// Handle CEO Login Form Submission
+document.getElementById('ceoLoginForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    console.log('CEO Login form submitted.');
+
+    const email = document.getElementById('ceoLoginEmail').value;
+    const password = document.getElementById('ceoLoginPassword').value;
+    const ceoLoginMsg = document.getElementById('ceoLoginMsg');
+
+    ceoLoginMsg.classList.add('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/ceo-login`, { // Assuming you'll add this endpoint
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username: email, password: password })
+        });
+
+        const data = await response.json();
+        ceoLoginMsg.textContent = data.message;
+        ceoLoginMsg.classList.remove('hidden');
+
+        if (response.ok) {
+            ceoLoginMsg.classList.remove('error-msg');
+            ceoLoginMsg.classList.add('success-msg');
+            displayTempMessage('CEO login successful!', true);
+            saveAuthData(data.token, { email: email, role: 'ceo', fullName: data.fullName || email });
+            showCEODashboard(); // Function to show CEO dashboard
+        } else {
+            ceoLoginMsg.classList.remove('success-msg');
+            ceoLoginMsg.classList.add('error-msg');
+            displayTempMessage(`CEO login failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error during CEO login:', error);
+        ceoLoginMsg.textContent = 'Network error. Please try again.';
+        ceoLoginMsg.classList.remove('hidden');
+        ceoLoginMsg.classList.remove('success-msg');
+        ceoLoginMsg.classList.add('error-msg');
+        displayTempMessage('Network error during CEO login.', false);
+    }
+});
+
+
+// --- Logout Functions ---
+function logoutUser() {
+    console.log('FUNC: logoutUser called. Logging out user.');
+    clearAuthData();
+    displayTempMessage('Logged out successfully!', true);
+    showLogin(); // Go back to login page
+}
+
+function logoutLeader() {
+    console.log('FUNC: logoutLeader called. Logging out leader.');
+    clearAuthData();
+    displayTempMessage('Leader logged out successfully!', true);
+    showLogin(); // Go back to login page
+}
+
+function logoutCEO() {
+    console.log('FUNC: logoutCEO called. Logging out CEO.');
+    clearAuthData();
+    displayTempMessage('CEO logged out successfully!', true);
+    showLogin(); // Go back to login page
+}
+
+// --- Dummy Functions for Dashboard Features (You'll implement these with backend calls) ---
+function showPaymentInstructions(method) {
+    console.log('FUNC: showPaymentInstructions called for method:', method);
+    const instructionsDiv = document.getElementById('paymentInstructions');
+    const allInfos = instructionsDiv.querySelectorAll('div');
+    allInfos.forEach(div => div.classList.add('hidden')); // Hide all instructions
+
+    if (method) {
+        document.getElementById(`${method}Info`).classList.remove('hidden');
+        instructionsDiv.style.display = 'block'; // Show the overall instructions div
+    } else {
+        instructionsDiv.style.display = 'none'; // Hide if no method selected
+    }
+}
+
+function showLeaderDashboard(leaderName) {
+    console.log('FUNC: showLeaderDashboard called for leader:', leaderName);
+    hideAllPanels();
+    document.getElementById('leaderPanel').classList.remove('hidden');
+    document.getElementById('leaderNameDisplay').textContent = leaderName;
+    // In a real app, fetch pending payments, user messages, rotation data etc.
+    fetchPendingPayments();
+    fetchUserMessages();
+    fetchRotationData();
+    fetchAllUsersForAdmin();
+    // No need to call generateReferralCode here unless you want it to auto-generate on load
+}
+
+function showCEODashboard() {
+    console.log('FUNC: showCEODashboard called.');
+    hideAllPanels();
+    document.getElementById('ceoPanel').classList.remove('hidden');
+    // In a real app, fetch CEO-specific data like rotation history, system activity
+    fetchCEORotationHistory();
+    fetchAdminHistory();
+    fetchGeneralHistory(); // Fetch general history for CEO
+}
+
+// Dummy fetch functions for leader/CEO dashboards
+async function fetchPendingPayments() {
+    console.log('Fetching pending payments...');
+    const list = document.getElementById('pendingPaymentsList');
+    list.innerHTML = '';
+    document.getElementById('noPendingPayments').classList.remove('hidden'); // Assume no data initially
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/leader/pending-payments`, {
+            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
+        });
+        const payments = await response.json();
+
+        if (response.ok && payments.length > 0) {
+            document.getElementById('noPendingPayments').classList.add('hidden');
+            payments.forEach(p => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${p.userName} - $${p.amount.toFixed(2)} (${p.method}) - Status: <span class="status-unpaid">${p.status}</span></span>
+                    <button onclick="validatePayment('${p.id}')">Validate</button>
+                    <button style="background-color: #dc3545;" onclick="rejectPayment('${p.id}')">Reject</button>
+                `;
+                list.appendChild(li);
+            });
+        } else {
+            document.getElementById('noPendingPayments').classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error fetching pending payments:', error);
+        document.getElementById('noPendingPayments').textContent = 'Error loading payments.';
+        document.getElementById('noPendingPayments').classList.remove('hidden');
+    }
+}
+
+async function validatePayment(paymentId) {
+    console.log(`Validating payment ${paymentId}...`);
+    try {
+        const response = await fetch(`${API_BASE_URL}/leader/validate-payment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            },
+            body: JSON.stringify({ paymentId })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            fetchPendingPayments(); // Refresh list
+            fetchAllUsersForAdmin(); // Refresh user list as status might change
+            fetchGeneralHistory(); // Refresh general history
+        } else {
+            displayTempMessage(`Validation failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error validating payment:', error);
+        displayTempMessage('Network error during payment validation.', false);
+    }
+}
+
+async function rejectPayment(paymentId) {
+    console.log(`Rejecting payment ${paymentId}...`);
+    try {
+        const response = await fetch(`${API_BASE_URL}/leader/reject-payment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            },
+            body: JSON.stringify({ paymentId })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            fetchPendingPayments(); // Refresh list
+            fetchGeneralHistory(); // Refresh general history
+        } else {
+            displayTempMessage(`Rejection failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error rejecting payment:', error);
+        displayTempMessage('Network error during payment rejection.', false);
+    }
+}
+
+
+async function fetchUserMessages() {
+    console.log('Fetching user messages...');
+    const list = document.getElementById('userMessagesList');
+    list.innerHTML = '';
+    document.getElementById('noUserMessages').classList.remove('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/leader/messages`, {
+            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
+        });
+        const messages = await response.json();
+
+        if (response.ok && messages.length > 0) {
+            document.getElementById('noUserMessages').classList.add('hidden');
+            messages.forEach(msg => {
+                const li = document.createElement('li');
+                li.classList.add(msg.read ? 'read' : 'unread');
+                li.innerHTML = `
+                    <strong>From: ${msg.email}</strong><br>
+                    Subject: ${msg.subject}<br>
+                    Message: ${msg.message}
+                    ${!msg.read ? `<button onclick="markMessageRead('${msg.id}')">Mark as Read</button>` : ''}
+                `;
+                list.appendChild(li);
+            });
+        } else {
+            document.getElementById('noUserMessages').classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error fetching user messages:', error);
+        document.getElementById('noUserMessages').textContent = 'Error loading messages.';
+        document.getElementById('noUserMessages').classList.remove('hidden');
+    }
+}
+
+async function markMessageRead(messageId) {
+    console.log(`Marking message ${messageId} as read...`);
+    try {
+        const response = await fetch(`${API_BASE_URL}/leader/messages/${messageId}/read`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            }
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            fetchUserMessages(); // Refresh list
+            fetchGeneralHistory(); // Refresh general history
+        } else {
+            displayTempMessage(`Failed to mark message as read: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error marking message as read:', error);
+        displayTempMessage('Network error marking message as read.', false);
+    }
+}
+
+// Dummy data for rotation (will be replaced by backend data)
+let rotationParticipants = []; // Stores user IDs or objects
+let currentRotationDay = 0;
+let currentRecipientIndex = -1;
+let dailyInvestmentAmount = 10; // Default
+
+async function fetchRotationData() {
+    console.log('Fetching rotation data...');
+    const select = document.getElementById('availableMembersSelect');
+    select.innerHTML = '<option value="">-- Select Paid & Active Member --</option>';
+
+    try {
+        const rotationResponse = await fetch(`${API_BASE_URL}/rotation/data`, {
+            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
+        });
+        const rotationData = await rotationResponse.json();
+
+        if (rotationResponse.ok) {
+            rotationParticipants = rotationData.participants || [];
+            currentRotationDay = rotationData.currentDay || 0;
+            currentRecipientIndex = rotationData.currentRecipientIndex !== undefined ? rotationData.currentRecipientIndex : -1;
+            dailyInvestmentAmount = rotationData.dailyInvestmentAmount || 10;
+
+            document.getElementById('currentRotationDay').textContent = currentRotationDay;
+            document.getElementById('dailyInvest').value = dailyInvestmentAmount;
+            updateRotationParticipantsList();
+            updateCurrentRecipientDisplay();
+
+            // Fetch all active and paid users to populate the dropdown
+            const usersResponse = await fetch(`${API_BASE_URL}/admin/users`, {
+                headers: { 'Authorization': `Bearer ${currentAuthToken}` }
+            });
+            const allUsers = await usersResponse.json();
+
+            if (usersResponse.ok) {
+                const activePaidUsers = allUsers.filter(user => user.isActive && user.isPaid && user.role === 'user');
+                activePaidUsers.forEach(user => {
+                    if (!rotationParticipants.some(p => p.id === user.id)) { // Don't add if already in rotation
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = user.fullName || user.username;
+                        select.appendChild(option);
+                    }
+                });
+            } else {
+                console.error('Failed to fetch users for rotation dropdown:', allUsers.message);
+            }
+        } else {
+            console.error('Failed to fetch rotation data:', rotationData.message);
+        }
+    } catch (error) {
+        console.error('Error fetching rotation data:', error);
+    }
+}
+
+function updateRotationParticipantsList() {
+    const list = document.getElementById('rotationParticipantsList');
+    list.innerHTML = '';
+    if (rotationParticipants.length === 0) {
+        document.getElementById('noActiveParticipants').classList.remove('hidden');
+    } else {
+        document.getElementById('noActiveParticipants').classList.add('hidden');
+        rotationParticipants.forEach((p, index) => {
+            const li = document.createElement('li');
+            li.textContent = p.fullName || p.username;
+            if (index === currentRecipientIndex) {
+                li.classList.add('current-recipient');
+            }
+            list.appendChild(li);
+        });
+    }
+}
+
+function updateCurrentRecipientDisplay() {
+    const display = document.getElementById('currentRecipientDisplay');
+    if (rotationParticipants.length > 0 && currentRecipientIndex !== -1) {
+        const recipient = rotationParticipants[currentRecipientIndex];
+        display.textContent = recipient.fullName || recipient.username;
+    } else {
+        display.textContent = 'N/A';
+    }
+}
+
+async function saveRotationSettings() {
+    dailyInvestmentAmount = parseFloat(document.getElementById('dailyInvest').value);
+    if (isNaN(dailyInvestmentAmount) || dailyInvestmentAmount <= 0) {
+        displayTempMessage('Investment must be a positive number.', false);
+        return;
     }
     try {
-        const client = new MongoClient(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
-        await client.connect();
-        console.log('Connected to MongoDB Atlas!');
-        db = client.db(); // Get the database instance (database name is in the URI)
-
-        // Assign collections
-        usersCollection = db.collection('users');
-        historyCollection = db.collection('history');
-        pendingPaymentsCollection = db.collection('pendingPayments');
-        rotationDataCollection = db.collection('rotationData');
-        messagesCollection = db.collection('messages'); // New collection for contact messages
-
-        // Ensure default rotation data exists if not present
-        const existingRotation = await rotationDataCollection.findOne({});
-        if (!existingRotation) {
-            await rotationDataCollection.insertOne({
-                _id: new ObjectId('60c72b2f9b1e8b0015f8e8e8'), // Fixed ID for single rotation document
-                participants: [],
-                currentDay: 0,
-                currentRecipientIndex: -1,
-                dailyInvestmentAmount: 10
-            });
-            console.log('Default rotation data initialized.');
+        const response = await fetch(`${API_BASE_URL}/rotation/settings`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            },
+            body: JSON.stringify({ dailyInvestmentAmount })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            fetchGeneralHistory(); // Refresh general history
+        } else {
+            displayTempMessage(`Failed to update settings: ${data.message}`, false);
         }
-
     } catch (error) {
-        console.error('Failed to connect to MongoDB Atlas:', error);
-        process.exit(1); // Exit process if database connection fails
+        console.error('Error saving rotation settings:', error);
+        displayTempMessage('Network error saving rotation settings.', false);
     }
 }
 
-// --- History Logging Function (now uses MongoDB) ---
-async function logHistory(type, description, details = {}) {
-    const newEntry = {
-        _id: new ObjectId(), // MongoDB generates _id automatically
-        timestamp: new Date().toISOString(),
-        type,
-        description,
-        details
-    };
-    await historyCollection.insertOne(newEntry);
+async function addParticipantToRotation() {
+    const select = document.getElementById('availableMembersSelect');
+    const selectedUserId = select.value;
+    const selectedUserName = select.options[select.selectedIndex].textContent;
+    const addParticipantMsg = document.getElementById('addParticipantMsg');
+    addParticipantMsg.classList.add('hidden');
+
+    if (!selectedUserId) {
+        addParticipantMsg.textContent = 'Please select a member to add.';
+        addParticipantMsg.classList.remove('hidden');
+        addParticipantMsg.classList.add('error-msg');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/rotation/participants`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            },
+            body: JSON.stringify({ userId: selectedUserId, username: selectedUserName, fullName: selectedUserName })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            addParticipantMsg.classList.remove('error-msg');
+            addParticipantMsg.classList.add('success-msg');
+            addParticipantMsg.textContent = data.message;
+            select.value = ''; // Clear selection
+            fetchRotationData(); // Refresh list and dropdown
+            fetchGeneralHistory(); // Refresh general history
+        } else {
+            addParticipantMsg.textContent = `Failed to add participant: ${data.message}`;
+            addParticipantMsg.classList.remove('hidden');
+            addParticipantMsg.classList.add('error-msg');
+            displayTempMessage(`Failed to add participant: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error adding participant:', error);
+        addParticipantMsg.textContent = 'Network error adding participant.';
+        addParticipantMsg.classList.remove('hidden');
+        addParticipantMsg.classList.add('error-msg');
+        displayTempMessage('Network error adding participant.', false);
+    }
+}
+
+async function nextParticipant() {
+    const rotationStatusMsg = document.getElementById('rotationStatusMsg');
+    rotationStatusMsg.classList.add('hidden');
+
+    if (rotationParticipants.length === 0) {
+        rotationStatusMsg.textContent = 'No participants in rotation to advance.';
+        rotationStatusMsg.classList.remove('hidden');
+        rotationStatusMsg.classList.add('error-msg');
+        displayTempMessage('No participants in rotation.', false);
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/rotation/next`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            }
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            // Update local state with new data from backend
+            currentRotationDay = data.rotationData.currentDay;
+            currentRecipientIndex = data.rotationData.currentRecipientIndex;
+            rotationParticipants = data.rotationData.participants; // Ensure participants are up-to-date
+            document.getElementById('currentRotationDay').textContent = currentRotationDay;
+            updateCurrentRecipientDisplay();
+            updateRotationParticipantsList(); // Update highlight
+            fetchCEORotationHistory(); // Refresh CEO history table
+            fetchGeneralHistory(); // Refresh general history
+            fetchAllUsersForAdmin(); // Refresh user list to show updated gains
+        } else {
+            rotationStatusMsg.textContent = `Rotation failed: ${data.message}`;
+            rotationStatusMsg.classList.remove('hidden');
+            rotationStatusMsg.classList.add('error-msg');
+            displayTempMessage(`Rotation failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error advancing rotation:', error);
+        rotationStatusMsg.textContent = 'Network error advancing rotation.';
+        rotationStatusMsg.classList.remove('hidden');
+        rotationStatusMsg.classList.add('error-msg');
+        displayTempMessage('Network error advancing rotation.', false);
+    }
 }
 
 
-// Middleware to verify JWT token
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+// Dummy data for user management
+let allUsers = []; // Stores all registered users (simulated)
 
-    if (token == null) {
-        return res.status(401).json({ message: 'Authentication token required.' });
-    }
+async function fetchAllUsersForAdmin() {
+    console.log('Fetching all users for admin...');
+    const tableBody = document.getElementById('adminUsersTable').querySelector('tbody');
+    tableBody.innerHTML = '';
+    document.getElementById('noUsersFound').classList.remove('hidden');
 
-    jwt.verify(token, SECRET_KEY, (err, user) => {
-        if (err) {
-            console.error('JWT verification failed:', err.message);
-            return res.status(403).json({ message: 'Invalid or expired token.' });
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/users`, {
+            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
+        });
+        const users = await response.json();
+
+        if (response.ok && users.length > 0) {
+            document.getElementById('noUsersFound').classList.add('hidden');
+            allUsers = users; // Store fetched users
+            users.forEach(user => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${user.firstName || ''} ${user.lastName || ''}</td>
+                    <td>${user.username}</td>
+                    <td>${user.role || 'user'}</td>
+                    <td><span class="${user.isPaid ? 'status-paid' : 'status-unpaid'}">${user.isPaid ? 'Paid' : 'Unpaid'}</span></td>
+                    <td><span class="${user.isActive ? 'status-active' : 'status-inactive'}">${user.isActive ? 'Active' : 'Inactive'}</span></td>
+                    <td>
+                        <button onclick="toggleUserStatus('${user.id}', ${user.isActive})">${user.isActive ? 'Deactivate' : 'Activate'}</button>
+                        <button onclick="toggleUserPaymentStatus('${user.id}', ${user.isPaid})">${user.isPaid ? 'Mark Unpaid' : 'Mark Paid'}</button>
+                        <button style="background-color: #dc3545;" onclick="deleteUser('${user.id}')">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        } else {
+            document.getElementById('noUsersFound').classList.remove('hidden');
         }
-        req.user = user;
-        next();
-    });
-};
-
-// Middleware to authorize leader role
-const authorizeLeader = (req, res, next) => {
-    if (req.user && (req.user.role === 'leader' || req.user.role === 'ceo')) { // CEO can also access leader functions
-        next();
-    } else {
-        res.status(403).json({ message: 'Access denied. Leader privileges required.' });
     }
-};
-
-// Middleware to authorize CEO role
-const authorizeCEO = (req, res, next) => {
-    if (req.user && req.user.role === 'ceo') {
-        next();
-    } else {
-        res.status(403).json({ message: 'Access denied. CEO privileges required.' });
+    catch (error) {
+        console.error('Error fetching all users for admin:', error);
+        document.getElementById('noUsersFound').textContent = 'Error loading users.';
+        document.getElementById('noUsersFound').classList.remove('hidden');
     }
-};
-
-// --- API Routes ---
-
-app.get('/api/status', (req, res) => {
-    res.json({ message: 'Backend is running smoothly!', status: 'ok' });
-});
-
-// User Registration
-app.post('/api/register', async (req, res) => {
-    const { username, password, firstName, lastName, phoneNumber, referralCode } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({ message: 'Username and password are required.' });
-    }
-
-    const existingUser = await usersCollection.findOne({ username });
-    if (existingUser) {
-        return res.status(409).json({ message: 'Username already exists.' });
-    }
-
-    // IMPORTANT: In a real app, hash the password using bcrypt before saving!
-    const newUser = {
-        _id: new ObjectId(), // MongoDB generates _id
-        username,
-        password, // Store hashed password in production!
-        firstName,
-        lastName,
-        phoneNumber,
-        referralCode: referralCode || null,
-        role: 'user',
-        isPaid: false,
-        isActive: true,
-        invest: 0,
-        gain: 0,
-        createdAt: new Date().toISOString()
-    };
-
-    await usersCollection.insertOne(newUser);
-    await logHistory('User Registration', `New user registered: ${username}`, { userId: newUser._id.toString(), username: newUser.username });
-
-    res.status(201).json({ message: 'User registered successfully!', user: { id: newUser._id.toString(), username: newUser.username, fullName: `${firstName} ${lastName}` } });
-});
-
-// User Login
-app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({ message: 'Username and password are required.' });
-    }
-
-    const user = await usersCollection.findOne({ username, password }); // Password not hashed!
-
-    if (!user) {
-        return res.status(401).json({ message: 'Invalid username or password.' });
-    }
-
-    const token = jwt.sign({ id: user._id.toString(), username: user.username, role: user.role || 'user' }, SECRET_KEY, { expiresIn: '1h' });
-    await logHistory('User Login', `User logged in: ${username}`, { userId: user._id.toString(), username: user.username, role: user.role });
-
-    res.json({
-        message: 'Login successful!',
-        token,
-        role: user.role || 'user',
-        fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username,
-        invest: user.invest,
-        gain: user.gain,
-        referralCode: user.referralCode,
-        isPaid: user.isPaid, // ADDED: Send isPaid status
-        isActive: user.isActive // ADDED: Send isActive status
-    });
-});
-
-// Submit Payment Info
-app.post('/api/submit-payment', authenticateToken, async (req, res) => {
-    const { email, method } = req.body;
-    if (!email || !method) {
-        return res.status(400).json({ message: 'Email and payment method are required.' });
-    }
-
-    // Check if a pending payment already exists for this user
-    const existingPendingPayment = await pendingPaymentsCollection.findOne({ userId: req.user.id, status: 'Pending' });
-    if (existingPendingPayment) {
-        return res.status(409).json({ message: 'You already have a pending payment. Please wait for validation.' });
-    }
-
-    const newPayment = {
-        _id: new ObjectId(),
-        userId: new ObjectId(req.user.id), // Store as ObjectId
-        userName: req.user.username,
-        email: email,
-        method: method,
-        amount: 25, // Assuming a fixed amount for now
-        status: 'Pending',
-        timestamp: new Date().toISOString()
-    };
-    await pendingPaymentsCollection.insertOne(newPayment);
-    await logHistory('Payment Submission', `User submitted payment intent: ${email} via ${method}`, { userId: req.user.id, paymentId: newPayment._id.toString(), method: method });
-
-    res.json({ message: 'Payment information received. Awaiting validation by a team leader.' });
-});
-
-// Contact Admin
-app.post('/api/contact-admin', async (req, res) => {
-    const { email, subject, message } = req.body;
-    if (!email || !subject || !message) {
-        return res.status(400).json({ message: 'Email, subject, and message are required.' });
-    }
-    const newMessage = {
-        _id: new ObjectId(),
-        email,
-        subject,
-        message,
-        read: false,
-        timestamp: new Date().toISOString()
-    };
-    await messagesCollection.insertOne(newMessage);
-    await logHistory('Contact Admin', `New message from ${email}`, { subject: subject, messageId: newMessage._id.toString() });
-    res.json({ message: 'Your message has been sent to support.' });
-});
-
-// Leader Login
-app.post('/api/leader-login', async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({ message: 'Email and password are required for leader login.' });
-    }
-
-    const leader = await usersCollection.findOne({ username, password, role: 'leader' });
-
-    if (!leader) {
-        return res.status(401).json({ message: 'Invalid credentials or not authorized as a leader.' });
-    }
-
-    const token = jwt.sign({ id: leader._id.toString(), username: leader.username, role: 'leader' }, SECRET_KEY, { expiresIn: '1h' });
-    await logHistory('Leader Login', `Leader logged in: ${username}`, { leaderId: leader._id.toString(), username: leader.username });
-
-    res.json({ message: 'Leader login successful!', token, role: 'leader', fullName: `${leader.firstName || ''} ${leader.lastName || ''}`.trim() || leader.username });
-});
-
-// Leader Registration (for self-registration)
-app.post('/api/leader-register', async (req, res) => {
-    const { username, password, firstName, lastName, phoneNumber } = req.body;
-    if (!username || !password || !firstName || !lastName || !phoneNumber) {
-        return res.status(400).json({ message: 'All fields are required for leader registration.' });
-    }
-
-    const existingUser = await usersCollection.findOne({ username });
-    if (existingUser) {
-        return res.status(409).json({ message: 'Email already registered as a user or leader.' });
-    }
-
-    const newLeader = {
-        _id: new ObjectId(),
-        username,
-        password, // Store hashed password in production!
-        firstName,
-        lastName,
-        phoneNumber,
-        role: 'leader',
-        isPaid: true, // Leaders are typically considered paid/active
-        isActive: true,
-        invest: 0,
-        gain: 0,
-        createdAt: new Date().toISOString()
-    };
-
-    await usersCollection.insertOne(newLeader);
-    await logHistory('Leader Registration', `New leader registered: ${username}`, { leaderId: newLeader._id.toString(), username: newLeader.username });
-
-    res.status(201).json({ message: 'Leader registered successfully! You can now log in.' });
-});
-
-
-// CEO Login
-app.post('/api/ceo-login', async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({ message: 'Email and password are required for CEO login.' });
-    }
-
-    if (username === process.env.CEO_EMAIL && password === process.env.CEO_PASSWORD) {
-        const token = jwt.sign({ id: 'ceo_id', username: username, role: 'ceo' }, SECRET_KEY, { expiresIn: '1h' });
-        await logHistory('CEO Login', `CEO logged in: ${username}`, { username: username });
-        res.json({ message: 'CEO login successful!', token, role: 'ceo', fullName: 'CEO Admin' });
-    } else {
-        res.status(401).json({ message: 'Invalid CEO credentials.' });
-    }
-});
-
-// Add New Admin (CEO Only)
-app.post('/api/ceo/add-admin', authenticateToken, authorizeCEO, async (req, res) => {
-    const { username, password, firstName, lastName, phoneNumber, role = 'leader' } = req.body;
-    if (!username || !password || !firstName || !lastName || !phoneNumber) {
-        return res.status(400).json({ message: 'All fields are required to add a new admin.' });
-    }
-
-    const existingUser = await usersCollection.findOne({ username });
-    if (existingUser) {
-        return res.status(409).json({ message: 'Admin with this email already exists.' });
-    }
-
-    const newAdmin = {
-        _id: new ObjectId(),
-        username,
-        password, // Store hashed password in production!
-        firstName,
-        lastName,
-        phoneNumber,
-        role: role,
-        isPaid: true,
-        isActive: true,
-        invest: 0,
-        gain: 0,
-        createdAt: new Date().toISOString()
-    };
-
-    await usersCollection.insertOne(newAdmin);
-    await logHistory('Admin Added', `New admin (${role}) added by CEO: ${username}`, { adminId: newAdmin._id.toString(), username: newAdmin.username, addedBy: req.user.username });
-
-    res.status(201).json({ message: 'New admin added successfully!', admin: { id: newAdmin._id.toString(), username: newAdmin.username, fullName: `${firstName} ${lastName}` } });
-});
-
-// Get All Users (Admin/Leader Access)
-app.get('/api/admin/users', authenticateToken, authorizeLeader, async (req, res) => {
-    const users = await usersCollection.find({}).project({ password: 0 }).toArray(); // Exclude password
-    res.json(users.map(user => ({ ...user, id: user._id.toString() }))); // Convert _id to id for frontend
-});
-
-// Toggle User Status (Admin/Leader Access)
-app.put('/api/admin/users/:userId/status', authenticateToken, authorizeLeader, async (req, res) => {
-    const { userId } = req.params;
-    const { isActive } = req.body;
-
-    if (typeof isActive !== 'boolean') {
-        return res.status(400).json({ message: 'isActive must be a boolean.' });
-    }
-
-    const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
-    if (!user) {
-        return res.status(404).json({ message: 'User not found.' });
-    }
-
-    const result = await usersCollection.updateOne(
-        { _id: new ObjectId(userId) },
-        { $set: { isActive: isActive } }
-    );
-
-    if (result.modifiedCount === 0) {
-        return res.status(400).json({ message: 'User status not changed.' });
-    }
-
-    await logHistory('User Status Update', `User ${user.username} status changed from ${user.isActive} to ${isActive}`, { userId, changedBy: req.user.username });
-
-    res.json({ message: `User status updated to ${isActive ? 'active' : 'inactive'}.` });
-});
-
-// Toggle User Payment Status (Admin/Leader Access)
-app.put('/api/admin/users/:userId/payment-status', authenticateToken, authorizeLeader, async (req, res) => {
-    const { userId } = req.params;
-    const { isPaid } = req.body;
-
-    if (typeof isPaid !== 'boolean') {
-        return res.status(400).json({ message: 'isPaid must be a boolean.' });
-    }
-
-    const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
-    if (!user) {
-        return res.status(404).json({ message: 'User not found.' });
-    }
-
-    const result = await usersCollection.updateOne(
-        { _id: new ObjectId(userId) },
-        { $set: { isPaid: isPaid } }
-    );
-
-    if (result.modifiedCount === 0) {
-        return res.status(400).json({ message: 'User payment status not changed.' });
-    }
-
-    await logHistory('User Payment Status Update', `User ${user.username} payment status changed from ${user.isPaid ? 'Paid' : 'Unpaid'} to ${isPaid ? 'Paid' : 'Unpaid'}`, { userId, changedBy: req.user.username });
-
-    res.json({ message: `User payment status updated to ${isPaid ? 'paid' : 'unpaid'}.` });
-});
-
-// Delete User (Admin/Leader Access)
-app.delete('/api/admin/users/:userId', authenticateToken, authorizeLeader, async (req, res) => {
-    const { userId } = req.params;
-
-    const userToDelete = await usersCollection.findOne({ _id: new ObjectId(userId) });
-    if (!userToDelete) {
-        return res.status(404).json({ message: 'User not found.' });
-    }
-
-    const result = await usersCollection.deleteOne({ _id: new ObjectId(userId) });
-
-    if (result.deletedCount === 0) {
-        return res.status(404).json({ message: 'User not found or could not be deleted.' });
-    }
-
-    await logHistory('User Deletion', `User deleted: ${userToDelete.username}`, { userId, deletedBy: req.user.username });
-
-    res.json({ message: 'User deleted successfully.' });
-});
-
-// Get Pending Payments (Leader Access)
-app.get('/api/leader/pending-payments', authenticateToken, authorizeLeader, async (req, res) => {
-    const pendingPayments = await pendingPaymentsCollection.find({ status: 'Pending' }).toArray();
-    res.json(pendingPayments.map(p => ({ ...p, id: p._id.toString(), userId: p.userId.toString() }))); // Convert _id to id
-});
-
-// Validate Payment (Leader Access)
-app.post('/api/leader/validate-payment', authenticateToken, authorizeLeader, async (req, res) => {
-    const { paymentId } = req.body;
-    if (!paymentId) {
-        return res.status(400).json({ message: 'Payment ID is required.' });
-    }
-
-    const payment = await pendingPaymentsCollection.findOne({ _id: new ObjectId(paymentId), status: 'Pending' });
-    if (!payment) {
-        return res.status(404).json({ message: 'Pending payment not found or already processed.' });
-    }
-
-    // Update payment status
-    await pendingPaymentsCollection.updateOne(
-        { _id: new ObjectId(paymentId) },
-        { $set: { status: 'Validated', validatedBy: req.user.username, validationTimestamp: new Date().toISOString() } }
-    );
-
-    // Update user's isPaid status
-    const userUpdateResult = await usersCollection.updateOne(
-        { _id: new ObjectId(payment.userId) },
-        { $set: { isPaid: true } }
-    );
-
-    if (userUpdateResult.modifiedCount === 0) {
-        console.warn(`User ${payment.userId} not found for payment ${payment._id.toString()} during validation.`);
-        await logHistory('User Payment Validated (User Not Found)', `Payment for ${payment.userName} (${payment.amount}$) validated by ${req.user.username}, but user not found.`, { userId: payment.userId.toString(), paymentId: payment._id.toString() });
-    } else {
-        await logHistory('User Payment Validated', `Payment for ${payment.userName} (${payment.amount}$) validated by ${req.user.username}`, { userId: payment.userId.toString(), paymentId: payment._id.toString() });
-    }
-
-    res.json({ message: 'Payment validated successfully!' });
-});
-
-// Reject Payment (Leader Access)
-app.post('/api/leader/reject-payment', authenticateToken, authorizeLeader, async (req, res) => {
-    const { paymentId } = req.body;
-    if (!paymentId) {
-        return res.status(400).json({ message: 'Payment ID is required.' });
-    }
-
-    const payment = await pendingPaymentsCollection.findOne({ _id: new ObjectId(paymentId), status: 'Pending' });
-    if (!payment) {
-        return res.status(404).json({ message: 'Pending payment not found or already processed.' });
-    }
-
-    await pendingPaymentsCollection.updateOne(
-        { _id: new ObjectId(paymentId) },
-        { $set: { status: 'Rejected', rejectedBy: req.user.username, rejectionTimestamp: new Date().toISOString() } }
-    );
-
-    await logHistory('User Payment Rejected', `Payment for ${payment.userName} (${payment.amount}$) rejected by ${req.user.username}`, { userId: payment.userId.toString(), paymentId: payment._id.toString() });
-
-    res.json({ message: 'Payment rejected successfully.' });
-});
-
-// Rotation Management (Leader/CEO Access)
-const ROTATION_DOC_ID = new ObjectId('60c72b2f9b1e8b0015f8e8e8'); // Fixed ID for the single rotation document
-
-app.get('/api/rotation/data', authenticateToken, authorizeLeader, async (req, res) => {
-    const rotationData = await rotationDataCollection.findOne({ _id: ROTATION_DOC_ID });
-    if (!rotationData) {
-        return res.status(404).json({ message: 'Rotation data not found.' });
-    }
-    // Ensure participants array is always present
-    rotationData.participants = rotationData.participants || [];
-    res.json({ ...rotationData, _id: rotationData._id.toString() });
-});
-
-app.put('/api/rotation/settings', authenticateToken, authorizeLeader, async (req, res) => {
-    const { dailyInvestmentAmount } = req.body;
-    if (isNaN(dailyInvestmentAmount) || dailyInvestmentAmount <= 0) {
-        return res.status(400).json({ message: 'Daily investment must be a positive number.' });
-    }
-
-    const result = await rotationDataCollection.updateOne(
-        { _id: ROTATION_DOC_ID },
-        { $set: { dailyInvestmentAmount: dailyInvestmentAmount } }
-    );
-
-    if (result.modifiedCount === 0) {
-        return res.status(400).json({ message: 'Rotation settings not changed or document not found.' });
-    }
-
-    await logHistory('Rotation Settings Update', `Daily investment updated to ${dailyInvestmentAmount}$ by ${req.user.username}`, { updatedBy: req.user.username, amount: dailyInvestmentAmount });
-
-    res.json({ message: 'Rotation settings updated successfully!' });
-});
-
-app.post('/api/rotation/participants', authenticateToken, authorizeLeader, async (req, res) => {
-    const { userId, username, fullName } = req.body;
-    if (!userId || !username || !fullName) {
-        return res.status(400).json({ message: 'Participant details are required.' });
-    }
-
-    const rotationData = await rotationDataCollection.findOne({ _id: ROTATION_DOC_ID });
-    if (!rotationData) {
-        return res.status(404).json({ message: 'Rotation data document not found.' });
-    }
-
-    if (rotationData.participants && rotationData.participants.some(p => p.id === userId)) {
-        return res.status(409).json({ message: 'Participant already in rotation.' });
-    }
-
-    const newParticipant = { id: userId, username, fullName }; // Store userId as string for now
-    await rotationDataCollection.updateOne(
-        { _id: ROTATION_DOC_ID },
-        { $push: { participants: newParticipant } }
-    );
-
-    await logHistory('Rotation Participant Added', `Participant ${fullName} added to rotation by ${req.user.username}`, { userId, addedBy: req.user.username });
-
-    res.status(201).json({ message: 'Participant added to rotation successfully!' });
-});
-
-app.post('/api/rotation/next', authenticateToken, authorizeLeader, async (req, res) => {
-    let rotationData = await rotationDataCollection.findOne({ _id: ROTATION_DOC_ID });
-
-    if (!rotationData || !rotationData.participants || rotationData.participants.length === 0) {
-        return res.status(400).json({ message: 'No participants in rotation to advance.' });
-    }
-
-    rotationData.currentDay = (rotationData.currentDay || 0) + 1;
-    rotationData.currentRecipientIndex = (rotationData.currentRecipientIndex + 1) % rotationData.participants.length;
-    const currentRecipient = rotationData.participants[rotationData.currentRecipientIndex];
-
-    const totalPool = rotationData.participants.length * (rotationData.dailyInvestmentAmount || 10);
-    const recipientGain = totalPool; // For simplicity, recipient gets the whole pool
-
-    // Update recipient's gain in users collection
-    const userUpdateResult = await usersCollection.updateOne(
-        { _id: new ObjectId(currentRecipient.id) },
-        { $inc: { gain: recipientGain } } // Increment gain
-    );
-
-    if (userUpdateResult.modifiedCount === 0) {
-        console.warn(`Recipient user ${currentRecipient.id} not found in users collection during gain distribution.`);
-    }
-
-    // Update rotation data in database
-    await rotationDataCollection.updateOne(
-        { _id: ROTATION_DOC_ID },
-        { $set: {
-            currentDay: rotationData.currentDay,
-            currentRecipientIndex: rotationData.currentRecipientIndex
-        }}
-    );
-
-    await logHistory('Rotation Advance', `Day ${rotationData.currentDay}: ${currentRecipient.fullName || currentRecipient.username} received ${recipientGain}$`, {
-        day: rotationData.currentDay,
-        recipientId: currentRecipient.id,
-        recipientName: currentRecipient.fullName || currentRecipient.username,
-        gain: recipientGain,
-        advancedBy: req.user.username
-    });
-
-    res.json({
-        message: `Rotation advanced. Day ${rotationData.currentDay}: ${currentRecipient.fullName || currentRecipient.username} receives $${recipientGain.toFixed(2)}!`,
-        rotationData: rotationData
-    });
-});
-
-
-// Get User Messages (Leader Access)
-app.get('/api/leader/messages', authenticateToken, authorizeLeader, async (req, res) => {
-    const messages = await messagesCollection.find({}).toArray();
-    res.json(messages.map(msg => ({ ...msg, id: msg._id.toString() })));
-});
-
-// Mark Message as Read (Leader Access)
-app.put('/api/leader/messages/:messageId/read', authenticateToken, authorizeLeader, async (req, res) => {
-    const { messageId } = req.params;
-    const result = await messagesCollection.updateOne(
-        { _id: new ObjectId(messageId) },
-        { $set: { read: true } }
-    );
-    if (result.modifiedCount === 0) {
-        return res.status(404).json({ message: 'Message not found or already marked as read.' });
-    }
-    await logHistory('Message Read', `Message ${messageId} marked as read by ${req.user.username}`, { messageId, markedBy: req.user.username });
-    res.json({ message: 'Message marked as read.' });
-});
-
-
-// CEO Specific History Endpoints
-app.get('/api/ceo/rotation-history', authenticateToken, authorizeCEO, async (req, res) => {
-    const rotationHistory = await historyCollection.find({ type: 'Rotation Advance' }).sort({ timestamp: -1 }).limit(25).toArray();
-    res.json(rotationHistory.map(entry => ({ ...entry, id: entry._id.toString() })));
-});
-
-app.get('/api/ceo/admin-history', authenticateToken, authorizeCEO, async (req, res) => {
-    const adminActions = await historyCollection.find({
-        type: {
-            $in: [
-                'User Status Update',
-                'User Payment Status Update',
-                'User Deletion',
-                'Admin Added',
-                'Rotation Settings Update',
-                'Rotation Participant Added',
-                'User Payment Validated',
-                'User Payment Rejected',
-                'Message Read' // Include message read actions
-            ]
+}
+
+async function toggleUserStatus(userId, currentStatus) {
+    console.log(`Toggling status for user ${userId} to ${!currentStatus}...`);
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            },
+            body: JSON.stringify({ isActive: !currentStatus })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            fetchAllUsersForAdmin(); // Refresh table
+            fetchGeneralHistory(); // Refresh general history
+        } else {
+            displayTempMessage(`Status update failed: ${data.message}`, false);
         }
-    }).sort({ timestamp: -1 }).toArray();
-    res.json(adminActions.map(entry => ({ ...entry, id: entry._id.toString() })));
-});
+    } catch (error) {
+        console.error('Error toggling user status:', error);
+        displayTempMessage('Network error during user status update.', false);
+    }
+}
 
-// NEW: General History Endpoint for CEO
-app.get('/api/ceo/general-history', authenticateToken, authorizeCEO, async (req, res) => {
-    const history = await historyCollection.find({}).sort({ timestamp: -1 }).toArray(); // Get all history, sorted by latest
-    res.json(history.map(entry => ({ ...entry, id: entry._id.toString() }))); // Return all history for the CEO
-});
+async function toggleUserPaymentStatus(userId, currentPaidStatus) {
+    console.log(`Toggling payment status for user ${userId} to ${!currentPaidStatus}...`);
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/payment-status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            },
+            body: JSON.stringify({ isPaid: !currentPaidStatus })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            fetchAllUsersForAdmin(); // Refresh table
+            fetchGeneralHistory(); // Refresh general history
+        } else {
+            displayTempMessage(`Payment status update failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error toggling user payment status:', error);
+        displayTempMessage('Network error during user payment status update.', false);
+    }
+}
 
+async function deleteUser(userId) {
+    console.log(`Deleting user ${userId}...`);
+    // Replaced confirm() with a custom message box for better UX in an iframe environment
+    const confirmDelete = await new Promise(resolve => {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 1001; text-align: center;
+        `;
+        modal.innerHTML = `
+            <p>Are you sure you want to delete this user?</p>
+            <button id="confirmYes" style="margin-right: 10px;">Yes</button>
+            <button id="confirmNo" style="background-color: #6c757d;">No</button>
+        `;
+        document.body.appendChild(modal);
 
-// --- Error Handling Middleware ---
-
-app.use((req, res, next) => {
-    res.status(404).json({
-        message: 'Endpoint Not Found',
-        path: req.originalUrl,
-        method: req.method
+        document.getElementById('confirmYes').onclick = () => { modal.remove(); resolve(true); };
+        document.getElementById('confirmNo').onclick = () => { modal.remove(); resolve(false); };
     });
+
+    if (confirmDelete) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${currentAuthToken}`
+                }
+            });
+            const data = await response.json();
+            if (response.ok) {
+                displayTempMessage(data.message, true);
+                fetchAllUsersForAdmin(); // Refresh table
+                fetchGeneralHistory(); // Refresh general history
+            } else {
+                displayTempMessage(`User deletion failed: ${data.message}`, false);
+            }
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            displayTempMessage('Network error during user deletion.', false);
+        }
+    }
+}
+
+// Referral Code Generator
+function generateReferralCode() {
+    const code = Math.random().toString(36).substring(2, 10).toUpperCase(); // Simple random code
+    document.getElementById('generatedReferralCode').textContent = code;
+    document.getElementById('generatedReferralCodeMsg').textContent = 'New referral code generated!';
+    document.getElementById('generatedReferralCodeMsg').classList.remove('hidden', 'error-msg');
+    document.getElementById('generatedReferralCodeMsg').classList.add('success-msg');
+    displayTempMessage('New referral code generated!', true);
+    // In a real app, send to backend: /api/admin/generate-referral-code (POST)
+    // and store it, maybe link to a leader
+}
+
+// CEO Dashboard Functions
+async function fetchCEORotationHistory() {
+    console.log('Fetching CEO rotation history...');
+    const tableBody = document.getElementById('ceoRotationHistoryTable').querySelector('tbody');
+    tableBody.innerHTML = '';
+    document.getElementById('noRotationHistory').classList.remove('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/ceo/rotation-history`, {
+            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
+        });
+        const history = await response.json();
+
+        if (response.ok && history.length > 0) {
+            document.getElementById('noRotationHistory').classList.add('hidden');
+            history.forEach(entry => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${entry.day}</td>
+                    <td>${entry.recipient}</td>
+                    <td>$${entry.invest.toFixed(2)}</td>
+                    <td>$${entry.totalPool.toFixed(2)}</td>
+                    <td>$${entry.gain.toFixed(2)}</td>
+                    <td>${new Date(entry.timestamp).toLocaleString()}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        } else {
+            document.getElementById('noRotationHistory').classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error fetching CEO rotation history:', error);
+        document.getElementById('noRotationHistory').textContent = 'Error loading rotation history.';
+        document.getElementById('noRotationHistory').classList.remove('hidden');
+    }
+}
+
+async function fetchAdminHistory() {
+    console.log('Fetching admin activity history...');
+    const tableBody = document.getElementById('adminHistoryTable').querySelector('tbody');
+    tableBody.innerHTML = '';
+    document.getElementById('noAdminHistory').classList.remove('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/ceo/admin-history`, {
+            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
+        });
+        const history = await response.json();
+
+        if (response.ok && history.length > 0) {
+            document.getElementById('noAdminHistory').classList.add('hidden');
+            history.forEach(entry => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${new Date(entry.timestamp).toLocaleString()}</td>
+                    <td>${entry.type}</td>
+                    <td>${entry.description}</td>
+                    <td>${JSON.stringify(entry.details) || 'N/A'}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        } else {
+            document.getElementById('noAdminHistory').classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error fetching admin history:', error);
+        document.getElementById('noAdminHistory').textContent = 'Error loading admin history.';
+        document.getElementById('noAdminHistory').classList.remove('hidden');
+    }
+}
+
+// NEW: Fetch General History for CEO
+async function fetchGeneralHistory() {
+    console.log('Fetching general history for CEO...');
+    const tableBody = document.getElementById('generalHistoryTable').querySelector('tbody');
+    tableBody.innerHTML = '';
+    document.getElementById('noGeneralHistory').classList.remove('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/ceo/general-history`, {
+            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
+        });
+        const history = await response.json();
+
+        if (response.ok && history.length > 0) {
+            document.getElementById('noGeneralHistory').classList.add('hidden');
+            history.forEach(entry => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${new Date(entry.timestamp).toLocaleString()}</td>
+                    <td>${entry.type}</td>
+                    <td>${entry.description}</td>
+                    <td>${JSON.stringify(entry.details) || 'N/A'}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        } else {
+            document.getElementById('noGeneralHistory').classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error fetching general history:', error);
+        document.getElementById('noGeneralHistory').textContent = 'Error loading general history.';
+        document.getElementById('noGeneralHistory').classList.remove('hidden');
+    }
+}
+
+
+async function addAdmin() {
+    console.log('Adding new admin...');
+    const firstName = document.getElementById('newAdminFirstName').value;
+    const lastName = document.getElementById('newAdminLastName').value;
+    const phoneNumber = document.getElementById('newAdminPhoneNumber').value;
+    const email = document.getElementById('newAdminEmail').value;
+    const password = document.getElementById('newAdminPass').value;
+    const newAdminMsg = document.getElementById('newAdminMsg');
+
+    newAdminMsg.classList.add('hidden');
+
+    if (!email || !password || !firstName || !lastName || !phoneNumber) {
+        newAdminMsg.textContent = 'All fields are required to add a new admin.';
+        newAdminMsg.classList.remove('hidden');
+        newAdminMsg.classList.add('error-msg');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/ceo/add-admin`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}` // CEO token
+            },
+            body: JSON.stringify({
+                username: email, // Email as username for backend
+                password: password,
+                firstName,
+                lastName,
+                phoneNumber,
+                role: 'leader' // New admins are typically leaders
+            })
+        });
+
+        const data = await response.json();
+        newAdminMsg.textContent = data.message;
+        newAdminMsg.classList.remove('hidden');
+
+        if (response.ok) {
+            newAdminMsg.classList.remove('error-msg');
+            newAdminMsg.classList.add('success-msg');
+            displayTempMessage('New admin added successfully!', true);
+            // Clear form fields manually as form.reset() might not work on dynamically added inputs
+            document.getElementById('newAdminFirstName').value = '';
+            document.getElementById('newAdminLastName').value = '';
+            document.getElementById('newAdminPhoneNumber').value = '';
+            document.getElementById('newAdminEmail').value = '';
+            document.getElementById('newAdminPass').value = '';
+            fetchGeneralHistory(); // Refresh general history
+        } else {
+            newAdminMsg.classList.remove('success-msg');
+            newAdminMsg.classList.add('error-msg');
+            displayTempMessage(`Failed to add admin: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error adding new admin:', error);
+        newAdminMsg.textContent = 'Network error. Please try again.';
+        newAdminMsg.classList.remove('hidden');
+        newAdminMsg.classList.remove('success-msg');
+        newAdminMsg.classList.add('error-msg');
+        displayTempMessage('Network error adding admin.', false);
+    }
+}
+
+
+function calculRotation() {
+    console.log('Generating comprehensive report (simulated)...');
+    const ceoReportMsg = document.getElementById('ceoReportMsg');
+    ceoReportMsg.classList.remove('hidden');
+    ceoReportMsg.classList.remove('error-msg');
+    ceoReportMsg.classList.add('success-msg');
+    ceoReportMsg.textContent = 'Comprehensive report generation simulated. This would be a complex backend operation.';
+    displayTempMessage('Report generation simulated!', true);
+}
+
+// NEW: Export History to CSV
+function exportTableToCSV(tableId, filename = 'history.csv') {
+    const table = document.getElementById(tableId);
+    if (!table) {
+        displayTempMessage(`Table with ID '${tableId}' not found for export.`, false);
+        return;
+    }
+
+    let csv = [];
+    const rows = table.querySelectorAll('tr');
+
+    for (const row of rows) {
+        const cols = row.querySelectorAll('th, td');
+        const rowData = Array.from(cols).map(col => {
+            let text = col.innerText;
+            // Handle commas and quotes in data
+            if (text.includes(',') || text.includes('"')) {
+                text = `"${text.replace(/"/g, '""')}"`;
+            }
+            return text;
+        });
+        csv.push(rowData.join(','));
+    }
+
+    const csvString = csv.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    displayTempMessage(`Exported ${filename} successfully!`, true);
+}
+
+
+// --- Initial Load Logic ---
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM Content Loaded. Initializing...');
+    // Check if a token exists, if so, try to show the appropriate panel
+    if (currentAuthToken && currentUserData.role) {
+        if (currentUserData.role === 'user') {
+            // In a real app, you'd verify the token with the backend first
+            // Now use isPaid and isActive from currentUserData
+            if (currentUserData.isPaid && currentUserData.isActive) {
+                showMainPlatform(currentUserData.fullName || currentUserData.email, currentUserData.invest, currentUserData.gain, currentUserData.referralCode);
+            } else if (!currentUserData.isPaid) {
+                showPaymentPanel(currentUserData.email);
+            } else { // User is inactive or some other state
+                displayTempMessage('Your account is not active or payment is pending. Please contact support.', false);
+                showLogin(); // Keep on login or show a specific inactive message
+            }
+        } else if (currentUserData.role === 'leader') {
+            showLeaderDashboard(currentUserData.fullName || currentUserData.email);
+        } else if (currentUserData.role === 'ceo') {
+            showCEODashboard();
+        } else {
+            showLogin(); // Fallback if role is unknown
+        }
+    } else {
+        showSignUp(); // Default to sign up if no token
+    }
+
+    // Initial fetch for admin/leader dashboards if they are shown on load
+    if (!document.getElementById('leaderPanel').classList.contains('hidden')) {
+        fetchPendingPayments();
+        fetchUserMessages();
+        fetchRotationData();
+        fetchAllUsersForAdmin();
+    }
+    if (!document.getElementById('ceoPanel').classList.contains('hidden')) {
+        fetchCEORotationHistory();
+        fetchAdminHistory();
+        fetchGeneralHistory(); // Fetch general history on CEO dashboard load
+    }
 });
 
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(err.statusCode || 500).json({
-        message: err.message || 'An unexpected error occurred',
-        error: process.env.NODE_ENV === 'production' ? {} : err.stack
-    });
-});
-
-// Connect to DB and then start the server
-connectDB().then(() => {
-    app.listen(PORT, () => {
-        console.log(`Server running on http://localhost:${PORT}`);
-        console.log('Backend ready. Ensure your frontend is pointing to this address.');
-    });
-}).catch(err => {
-    console.error('Failed to connect to database or start server:', err);
-    process.exit(1);
-});
+// For the confirm dialog, replace with a custom modal in a production environment
+// window.confirm = (message) => {
+//     return customModalConfirm(message); // Implement your own modal
+// };
