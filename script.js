@@ -1,1352 +1,869 @@
-console.log("Script loaded successfully!"); // Added for debugging
+// C:\Users\ASUS\dream2build-backend\server.js
 
-// Function to display temporary messages (replaces alerts)
-function displayTempMessage(message, isSuccess = true) {
-    const msgDiv = document.createElement('div');
-    msgDiv.textContent = message;
-    msgDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 15px 25px;
-        background-color: ${isSuccess ? '#d4edda' : '#f8d7da'};
-        color: ${isSuccess ? '#155724' : '#721c24'};
-        border: 1px solid ${isSuccess ? '#c3e6cb' : '#f5c6cb'};
-        border-radius: 5px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        z-index: 1000;
-        font-weight: bold;
-        opacity: 0;
-        transition: opacity 0.5s ease-in-out;
-    `;
-    document.body.appendChild(msgDiv);
+require('dotenv').config(); // ✅ Chargement des variables depuis le fichier .env
 
-    setTimeout(() => {
-        msgDiv.style.opacity = '1';
-    }, 10); // Small delay to allow transition
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
+const fs = require('fs').promises;
+const path = require('path');
 
-    setTimeout(() => {
-        msgDiv.style.opacity = '0';
-        msgDiv.addEventListener('transitionend', () => msgDiv.remove());
-    }, 3000); // Message disappears after 3 seconds
-}
+// Import the loadAllData function from your dataLoader.js file.
+// This assumes dataLoader.js is directly inside your 'data' folder.
+const { loadAllData } = require('./data/dataLoader');
 
+const app = express();
 
-// --- Configuration for your Backend API ---
-// IMPORTANT: Replace this with your actual backend server's URL when deployed!
-const API_BASE_URL = 'https://dream2build-api.onrender.com/api'; // UPDATED TO RENDER URL
+const PORT = process.env.PORT || 3000;
+const SECRET_KEY = process.env.SECRET_KEY || 'default_secret_key';
 
-// --- Helper Functions to Toggle Panels ---
-function hideAllPanels() {
-    console.log('FUNC: hideAllPanels called. Hiding all panels...');
-    document.getElementById('signUpPanel').classList.add('hidden');
-    document.getElementById('loginPanel').classList.add('hidden');
-    document.getElementById('verificationMessagePanel').classList.add('hidden');
-    document.getElementById('paymentPanel').classList.add('hidden');
-    document.getElementById('mainPlatformPanel').classList.add('hidden');
-    document.getElementById('leaderRegisterPanel').classList.add('hidden'); // Add Admin panel
-    document.getElementById('leaderLoginPanel').classList.add('hidden');
-    document.getElementById('ceoLoginPanel').classList.add('hidden');
-    document.getElementById('leaderPanel').classList.add('hidden');
-    document.getElementById('ceoPanel').classList.add('hidden');
-    document.getElementById('contactAdminPanel').classList.add('hidden');
-    console.log('FUNC: hideAllPanels completed. All panels hidden.');
-}
+app.use(bodyParser.json());
+app.use(cors());
 
-function showSignUp() {
-    console.log('FUNC: showSignUp called. Attempting to show Sign Up panel...');
-    hideAllPanels();
-    document.getElementById('signUpPanel').classList.remove('hidden');
-    console.log('FUNC: showSignUp completed. Sign Up panel should be visible.');
-}
+// Define your static files directory (if you have one, e.g., for a frontend build)
+// app.use(express.static(path.join(__dirname, 'public')));
 
-function showLogin() {
-    console.log('FUNC: showLogin called. Attempting to show Login panel...');
-    hideAllPanels();
-    const loginPanel = document.getElementById('loginPanel');
-    if (loginPanel) {
-        loginPanel.classList.remove('hidden');
-        console.log('FUNC: showLogin completed. Login panel should be visible.');
-    } else {
-        console.error('ERROR: loginPanel element not found!');
-    }
-}
+// Example:
+const DATA_DIR = path.join(__dirname, 'data');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json'); // New file for messages
+const ROTATION_HISTORY_FILE = path.join(DATA_DIR, 'rotationHistory.json'); // For CEO rotation history
+const ADMIN_ACTIVITY_FILE = path.join(DATA_DIR, 'adminActivity.json'); // For admin actions
+const ROTATION_DATA_FILE = path.join(DATA_DIR, 'rotationData.json'); // For current rotation state
+const PENDING_PAYMENTS_FILE = path.join(DATA_DIR, 'pendingPayments.json'); // For pending payments
 
-function showVerificationMessage(email) {
-    console.log('FUNC: showVerificationMessage called for email:', email);
-    hideAllPanels();
-    document.getElementById('verificationMessagePanel').classList.remove('hidden');
-    document.getElementById('verificationEmailDisplay').textContent = email;
-    console.log('FUNC: showVerificationMessage completed. Verification panel should be visible.');
-}
-
-// New functions to show only one admin/leader panel at a time
-function showLeaderLoginOnly() {
-    console.log('FUNC: showLeaderLoginOnly called. Attempting to show Leader Login panel only...');
-    hideAllPanels();
-    document.getElementById('leaderLoginPanel').classList.remove('hidden');
-    console.log('FUNC: showLeaderLoginOnly completed. Leader Login panel should be visible.');
-}
-
-function showLeaderRegisterOnly() {
-    console.log('FUNC: showLeaderRegisterOnly called. Attempting to show Leader Register panel only...');
-    hideAllPanels();
-    document.getElementById('leaderRegisterPanel').classList.remove('hidden');
-    console.log('FUNC: showLeaderRegisterOnly completed. Leader Register panel should be visible.');
-}
-
-function showAdminLoginRegister() {
-    console.log('FUNC: showAdminLoginRegister called. Showing Leader Login by default.');
-    showLeaderLoginOnly(); // Default to showing leader login
-}
-
-function showCEOLogin() {
-    console.log('FUNC: showCEOLogin called. Attempting to show CEO Login panel only...');
-    hideAllPanels();
-    document.getElementById('ceoLoginPanel').classList.remove('hidden');
-    console.log('FUNC: showCEOLogin completed. CEO Login panel should be visible.');
-}
-
-function showContactAdmin() {
-    console.log('FUNC: showContactAdmin called. Attempting to show Contact Admin panel only...');
-    hideAllPanels();
-    document.getElementById('contactAdminPanel').classList.remove('hidden');
-    console.log('FUNC: showContactAdmin completed. Contact Admin panel should be visible.');
-}
-
-// Function to get current user/admin token (simulated for frontend)
-// In a real app, this would get token from cookie or sessionStorage
-let currentAuthToken = localStorage.getItem('authToken');
-let currentUserData = JSON.parse(localStorage.getItem('currentUserData') || '{}'); // Stores role, name, email etc.
-
-function saveAuthData(token, userData) {
-    console.log('FUNC: saveAuthData called. Saving token and user data to localStorage.');
-    currentAuthToken = token;
-    currentUserData = userData;
-    localStorage.setItem('authToken', token);
-    localStorage.setItem('currentUserData', JSON.stringify(userData));
-}
-
-function clearAuthData() {
-    console.log('FUNC: clearAuthData called. Clearing token and user data from localStorage.');
-    currentAuthToken = null;
-    currentUserData = {};
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('currentUserData');
-}
-
-// --- Panel Show Functions (Adjusted for Backend Data) ---
-async function showPaymentPanel(userEmail) {
-    console.log('FUNC: showPaymentPanel called for email:', userEmail);
-    hideAllPanels();
-    document.getElementById('paymentPanel').classList.remove('hidden');
-    document.getElementById('paymentPanel').dataset.currentUserEmail = userEmail;
-
+// Helper function to read JSON files
+async function readJsonFile(filePath, defaultValue = []) {
     try {
-        document.getElementById('paymentUserName').textContent = currentUserData.fullName || currentUserData.email;
-        console.log('Payment panel should be visible. Displaying user:', currentUserData.fullName || currentUserData.email);
+        const data = await fs.readFile(filePath, 'utf8');
+        return JSON.parse(data);
     } catch (error) {
-        console.error('ERROR: Error fetching user data for payment panel:', error);
-        document.getElementById('paymentUserName').textContent = 'User';
-    }
-}
-
-async function showMainPlatform(userName, userInvest, userGain, userReferralCode) {
-    console.log('FUNC: showMainPlatform called for user:', userName);
-    hideAllPanels();
-    document.getElementById('mainPlatformPanel').classList.remove('hidden');
-    document.getElementById('loggedInUserName').textContent = userName;
-
-    const adminAreaNote = document.getElementById('adminAreaNote');
-    const participantFinancials = document.getElementById('participantFinancials');
-
-    // Only show financial details for regular users
-    if (currentUserData.role === 'user') {
-        adminAreaNote.textContent = ''; // Clear any previous text
-        participantFinancials.classList.remove('hidden'); // Ensure it's visible for users
-        document.getElementById('participantInvest').textContent = userInvest !== undefined ? userInvest.toFixed(2) : '0.00';
-        document.getElementById('participantGain').textContent = userGain !== undefined ? userGain.toFixed(2) : '0.00';
-        document.getElementById('participantReferralCode').textContent = userReferralCode || 'N/A';
-    } else if (currentUserData.role === 'leader') {
-        adminAreaNote.textContent = 'You have Team Leader access. Check the "Team Leader Dashboard" section.';
-        participantFinancials.classList.add('hidden'); // Hide for leaders
-    } else if (currentUserData.role === 'ceo') {
-        adminAreaNote.textContent = 'You have CEO access. Check the "CEO Dashboard" section.';
-        participantFinancials.classList.add('hidden'); // Hide for CEO
-    } else {
-        adminAreaNote.textContent = 'Your role is not specified.';
-        participantFinancials.classList.add('hidden'); // Hide for unknown roles
-    }
-    console.log('FUNC: showMainPlatform completed. Main platform should be visible.');
-}
-
-// --- Authentication and API Call Functions ---
-
-// Handle Sign Up Form Submission
-document.getElementById('signUpForm').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    console.log('Sign Up form submitted.');
-
-    const firstName = document.getElementById('firstName').value;
-    const lastName = document.getElementById('lastName').value;
-    const phoneNumber = document.getElementById('phoneNumber').value;
-    const email = document.getElementById('email').value; // This will be 'username' for backend
-    const password = document.getElementById('password').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
-    const referralCode = document.getElementById('referralCode').value;
-    const signUpMsg = document.getElementById('signUpMsg');
-
-    signUpMsg.classList.add('hidden'); // Hide previous messages
-
-    if (password !== confirmPassword) {
-        signUpMsg.textContent = 'Passwords do not match!';
-        signUpMsg.classList.remove('hidden');
-        signUpMsg.classList.remove('success-msg');
-        signUpMsg.classList.add('error-msg');
-        return;
-    }
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/register`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                // Backend expects 'username' and 'password'
-                username: email, // Mapping email input to backend's 'username'
-                password: password,
-                firstName,
-                lastName,
-                phoneNumber,
-                referralCode
-            })
-        });
-
-        const data = await response.json();
-        signUpMsg.textContent = data.message;
-        signUpMsg.classList.remove('hidden');
-
-        if (response.ok) {
-            signUpMsg.classList.remove('error-msg');
-            signUpMsg.classList.add('success-msg');
-            displayTempMessage('Registration successful! Please log in.', true);
-            // Simulate verification and show login panel
-            setTimeout(() => showVerificationMessage(email), 1000);
-        } else {
-            signUpMsg.classList.remove('success-msg');
-            signUpMsg.classList.add('error-msg');
-            displayTempMessage(`Registration failed: ${data.message}`, false);
+        if (error.code === 'ENOENT') {
+            return defaultValue; // Return default if file doesn't exist
         }
+        throw error; // Re-throw other errors
+    }
+}
+
+// Helper function to write JSON files
+async function writeJsonFile(filePath, data) {
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+}
+
+
+// --- Define your API routes here ---
+
+// Middleware to verify JWT token (for protected routes)
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+    if (token == null) {
+        return res.status(401).json({ message: 'Authentication token required.' });
+    }
+
+    jwt.verify(token, SECRET_KEY, (err, user) => {
+        if (err) {
+            console.error('JWT verification failed:', err.message);
+            return res.status(403).json({ message: 'Invalid or expired token.' });
+        }
+        req.user = user; // Attach user payload to request
+        next();
+    });
+};
+
+// Example Route: A simple GET endpoint
+app.get('/api/status', (req, res) => {
+    res.json({ message: 'Backend is running smoothly!', status: 'ok' });
+});
+
+// Example Route: A route to get some data (e.g., from a JSON file in your 'data' folder)
+app.get('/api/some-data', async (req, res) => {
+    try {
+        const filePath = path.join(DATA_DIR, 'sample.json');
+        await fs.access(filePath);
+        const data = await fs.readFile(filePath, 'utf8');
+        res.json(JSON.parse(data));
     } catch (error) {
-        console.error('Error during sign up:', error);
-        signUpMsg.textContent = 'Network error. Please try again.';
-        signUpMsg.classList.remove('hidden');
-        signUpMsg.classList.remove('success-msg');
-        signUpMsg.classList.add('error-msg');
-        displayTempMessage('Network error during sign up.', false);
+        if (error.code === 'ENOENT') {
+            console.error(`Error: 'sample.json' not found at ${filePath}`);
+            res.status(404).json({ message: 'Data file not found.', error: error.message });
+        } else {
+            console.error('Error fetching some-data:', error);
+            res.status(500).json({ message: 'Internal server error while fetching data.', error: error.message });
+        }
     }
 });
 
-// Handle Login Form Submission
-document.getElementById('loginForm').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    console.log('Login form submitted.');
-
-    const email = document.getElementById('loginEmail').value; // This will be 'username' for backend
-    const password = document.getElementById('loginPassword').value;
-    const loginMsg = document.getElementById('loginMsg');
-
-    loginMsg.classList.add('hidden'); // Hide previous messages
+// User Registration
+app.post('/api/register', async (req, res) => {
+    const { username, password, firstName, lastName, phoneNumber, referralCode } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Username and password are required.' });
+    }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                // Backend expects 'username' and 'password'
-                username: email, // Mapping loginEmail input to backend's 'username'
-                password: password
-            })
+        let users = await readJsonFile(USERS_FILE);
+
+        if (users.some(user => user.username === username)) {
+            return res.status(409).json({ message: 'Username already exists.' });
+        }
+
+        const newUser = { id: uuidv4(), username, password, firstName, lastName, phoneNumber, referralCode, role: 'user', isPaid: false, isActive: true, invest: 0, gain: 0 };
+        users.push(newUser);
+        await writeJsonFile(USERS_FILE, users);
+
+        res.status(201).json({ message: 'User registered successfully!', user: { id: newUser.id, username: newUser.username, fullName: `${firstName} ${lastName}` } });
+
+    } catch (error) {
+        console.error('Error during registration:', error);
+        res.status(500).json({ message: 'Server error during registration.', error: error.message });
+    }
+});
+
+// User Login
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Username and password are required.' });
+    }
+
+    try {
+        const users = await readJsonFile(USERS_FILE);
+        const user = users.find(u => u.username === username && u.password === password);
+
+        if (!user) {
+            return res.status(401).json({ message: 'Invalid username or password.' });
+        }
+
+        // JWT token now expires in 7 days
+        const token = jwt.sign({ id: user.id, username: user.username, role: user.role || 'user' }, SECRET_KEY, { expiresIn: '7d' });
+
+        res.json({
+            message: 'Login successful!',
+            token,
+            role: user.role || 'user',
+            fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username,
+            isPaid: user.isPaid,
+            isActive: user.isActive,
+            invest: user.invest || 0,
+            gain: user.gain || 0,
+            referralCode: user.referralCode
         });
 
-        const data = await response.json();
-        loginMsg.textContent = data.message;
-        loginMsg.classList.remove('hidden');
-
-        if (response.ok) {
-            loginMsg.classList.remove('error-msg');
-            loginMsg.classList.add('success-msg');
-            displayTempMessage('Login successful!', true);
-
-            // Save authentication token and user data, including isPaid and isActive
-            saveAuthData(data.token, {
-                email: email,
-                role: data.role || 'user',
-                fullName: data.fullName || email,
-                isPaid: data.isPaid,   // Use actual isPaid from backend
-                isActive: data.isActive // Use actual isActive from backend
-            });
-
-            // Redirect based on role and payment/active status
-            if (data.role === 'user') {
-                if (data.isPaid && data.isActive) {
-                    showMainPlatform(data.fullName || email, data.invest, data.gain, data.referralCode);
-                } else if (!data.isPaid) {
-                    showPaymentPanel(email);
-                } else { // User is active but not paid, or some other inactive state
-                    displayTempMessage('Your account is not active or payment is pending. Please contact support.', false);
-                    // Optionally, you might want a specific panel for inactive users
-                    // For now, keep them on login or show a generic message
-                    showLogin();
-                }
-            } else if (data.role === 'leader') {
-                showLeaderDashboard(data.fullName || email);
-            } else if (data.role === 'ceo') {
-                showCEODashboard();
-            } else {
-                // Fallback for unknown roles
-                displayTempMessage('Unknown user role. Please contact support.', false);
-                showLogin();
-            }
-
-        } else {
-            loginMsg.classList.remove('success-msg');
-            loginMsg.classList.add('error-msg');
-            displayTempMessage(`Login failed: ${data.message}`, false);
-        }
     } catch (error) {
         console.error('Error during login:', error);
-        loginMsg.textContent = 'Network error. Please try again.';
-        loginMsg.classList.remove('hidden');
-        loginMsg.classList.remove('success-msg');
-        loginMsg.classList.add('error-msg');
-        displayTempMessage('Network error during login.', false);
+        res.status(500).json({ message: 'Server error during login.', error: error.message });
     }
 });
 
-// --- Other Form Submission Handlers (Add your backend calls here) ---
+// Submit Payment Info
+app.post('/api/submit-payment', authenticateToken, async (req, res) => {
+    const { email, method } = req.body;
+    if (!email || !method) {
+        return res.status(400).json({ message: 'Email and payment method are required.' });
+    }
 
-// Handle Payment Form Submission
-document.getElementById('paymentForm').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    console.log('Payment form submitted.');
-
-    const paymentMethod = document.getElementById('paymentMethod').value;
-    const currentUserEmail = document.getElementById('paymentPanel').dataset.currentUserEmail;
-    const paymentMsg = document.getElementById('paymentMsg');
-
-    paymentMsg.classList.add('hidden');
-
-    // In a real app, you'd send payment details to your backend
     try {
-        const response = await fetch(`${API_BASE_URL}/submit-payment`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentAuthToken}` // Send token for authentication
-            },
-            body: JSON.stringify({
-                email: currentUserEmail,
-                method: paymentMethod,
-                // Include other payment details if applicable (e.g., card info)
-            })
+        let pendingPayments = await readJsonFile(PENDING_PAYMENTS_FILE);
+        const newPayment = {
+            id: uuidv4(),
+            userId: req.user.id,
+            userName: req.user.username, // Assuming username is email
+            email: email,
+            method: method,
+            amount: 25, // Hardcoded payment amount
+            status: 'Pending',
+            timestamp: new Date().toISOString()
+        };
+        pendingPayments.push(newPayment);
+        await writeJsonFile(PENDING_PAYMENTS_FILE, pendingPayments);
+
+        // Log this action for general history
+        let generalHistory = await readJsonFile(ADMIN_ACTIVITY_FILE); // Reusing admin activity file for general history
+        generalHistory.push({
+            id: uuidv4(),
+            timestamp: new Date().toISOString(),
+            type: 'Payment Submitted',
+            description: `User ${req.user.username} submitted payment via ${method}.`,
+            details: { userId: req.user.id, email, method, amount: 25 }
         });
+        await writeJsonFile(ADMIN_ACTIVITY_FILE, generalHistory);
 
-        const data = await response.json();
-        paymentMsg.textContent = data.message;
-        paymentMsg.classList.remove('hidden');
-
-        if (response.ok) {
-            paymentMsg.classList.remove('error-msg');
-            paymentMsg.classList.add('success-msg');
-            displayTempMessage('Payment info submitted! Awaiting validation.', true);
-            // After submitting payment, user should typically wait for leader validation
-            // No automatic redirect to main platform here, as validation is manual
-            showLogin(); // Go back to login, user can try again after validation
-        } else {
-            paymentMsg.classList.remove('success-msg');
-            paymentMsg.classList.add('error-msg');
-            displayTempMessage(`Payment submission failed: ${data.message}`, false);
-        }
+        res.json({ message: 'Payment information received. Awaiting validation by a team leader.' });
     } catch (error) {
         console.error('Error submitting payment:', error);
-        paymentMsg.textContent = 'Network error. Please try again.';
-        paymentMsg.classList.remove('hidden');
-        paymentMsg.classList.remove('success-msg');
-        paymentMsg.classList.add('error-msg');
-        displayTempMessage('Network error during payment submission.', false);
+        res.status(500).json({ message: 'Server error submitting payment.', error: error.message });
     }
 });
 
-
-// Handle Contact Admin Form Submission
-document.getElementById('contactAdminForm').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    console.log('Contact Admin form submitted.');
-
-    const contactEmail = document.getElementById('contactEmail').value;
-    const contactSubject = document.getElementById('contactSubject').value;
-    const contactMessage = document.getElementById('contactMessage').value;
-    const contactAdminMsg = document.getElementById('contactAdminMsg');
-
-    contactAdminMsg.classList.add('hidden');
+// Contact Admin
+app.post('/api/contact-admin', async (req, res) => {
+    const { email, subject, message } = req.body;
+    if (!email || !subject || !message) {
+        return res.status(400).json({ message: 'Email, subject, and message are required.' });
+    }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/contact-admin`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                email: contactEmail,
-                subject: contactSubject,
-                message: contactMessage
-            })
+        let messages = await readJsonFile(MESSAGES_FILE);
+        const newMessage = {
+            id: uuidv4(),
+            email,
+            subject,
+            message,
+            timestamp: new Date().toISOString(),
+            read: false
+        };
+        messages.push(newMessage);
+        await writeJsonFile(MESSAGES_FILE, messages);
+
+        // Log this action for general history
+        let generalHistory = await readJsonFile(ADMIN_ACTIVITY_FILE);
+        generalHistory.push({
+            id: uuidv4(),
+            timestamp: new Date().toISOString(),
+            type: 'Support Message Received',
+            description: `New support message from ${email}.`,
+            details: { email, subject }
         });
+        await writeJsonFile(ADMIN_ACTIVITY_FILE, generalHistory);
 
-        const data = await response.json();
-        contactAdminMsg.textContent = data.message;
-        contactAdminMsg.classList.remove('hidden');
-
-        if (response.ok) {
-            contactAdminMsg.classList.remove('error-msg');
-            contactAdminMsg.classList.add('success-msg');
-            displayTempMessage('Message sent successfully!', true);
-            document.getElementById('contactAdminForm').reset(); // Clear form
-        } else {
-            contactAdminMsg.classList.remove('success-msg');
-            contactAdminMsg.classList.add('error-msg');
-            displayTempMessage(`Failed to send message: ${data.message}`, false);
-        }
+        console.log(`New message from ${email} - Subject: ${subject} - Message: ${message}`);
+        res.json({ message: 'Your message has been sent to support.' });
     } catch (error) {
         console.error('Error sending contact message:', error);
-        contactAdminMsg.textContent = 'Network error. Please try again.';
-        contactAdminMsg.classList.remove('hidden');
-        contactAdminMsg.classList.remove('success-msg');
-        contactAdminMsg.classList.add('error-msg');
-        displayTempMessage('Network error sending message.', false);
+        res.status(500).json({ message: 'Server error sending contact message.', error: error.message });
     }
 });
 
-
-// Handle Leader Login Form Submission
-document.getElementById('leaderLoginForm').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    console.log('Leader Login form submitted.');
-
-    const email = document.getElementById('loginLeaderEmail').value;
-    const password = document.getElementById('loginLeaderPass').value;
-    const leaderLoginMsg = document.getElementById('leaderLoginMsg');
-
-    leaderLoginMsg.classList.add('hidden');
+// Leader Login Route
+app.post('/api/leader-login', async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Email and password are required for leader login.' });
+    }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/leader-login`, { // Assuming you'll add this endpoint
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ username: email, password: password })
-        });
+        const users = await readJsonFile(USERS_FILE);
+        const leader = users.find(u => u.username === username && u.password === password && u.role === 'leader');
 
-        const data = await response.json();
-        leaderLoginMsg.textContent = data.message;
-        leaderLoginMsg.classList.remove('hidden');
-
-        if (response.ok) {
-            leaderLoginMsg.classList.remove('error-msg');
-            leaderLoginMsg.classList.add('success-msg');
-            displayTempMessage('Leader login successful!', true);
-            saveAuthData(data.token, { email: email, role: 'leader', fullName: data.fullName || email });
-            showLeaderDashboard(data.fullName || email); // Function to show leader dashboard
-        } else {
-            leaderLoginMsg.classList.remove('success-msg');
-            leaderLoginMsg.classList.add('error-msg');
-            displayTempMessage(`Leader login failed: ${data.message}`, false);
+        if (!leader) {
+            return res.status(401).json({ message: 'Invalid credentials or not authorized as a leader.' });
         }
+
+        // JWT token now expires in 7 days
+        const token = jwt.sign({ id: leader.id, username: leader.username, role: 'leader' }, SECRET_KEY, { expiresIn: '7d' });
+
+        res.json({ message: 'Leader login successful!', token, role: 'leader', fullName: `${leader.firstName || ''} ${leader.lastName || ''}`.trim() || leader.username });
+
     } catch (error) {
         console.error('Error during leader login:', error);
-        leaderLoginMsg.textContent = 'Network error. Please try again.';
-        leaderLoginMsg.classList.remove('hidden');
-        leaderLoginMsg.classList.remove('success-msg');
-        leaderLoginMsg.classList.add('error-msg');
-        displayTempMessage('Network error during leader login.', false);
+        res.status(500).json({ message: 'Server error during leader login.', error: error.message });
     }
 });
 
-// Handle CEO Login Form Submission
-document.getElementById('ceoLoginForm').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    console.log('CEO Login form submitted.');
+// CEO Login Route
+app.post('/api/ceo-login', async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Email and password are required for CEO login.' });
+    }
 
-    const email = document.getElementById('ceoLoginEmail').value;
-    const password = document.getElementById('ceoLoginPassword').value;
-    const ceoLoginMsg = document.getElementById('ceoLoginMsg');
-
-    ceoLoginMsg.classList.add('hidden');
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/ceo-login`, { // Assuming you'll add this endpoint
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ username: email, password: password })
-        });
-
-        const data = await response.json();
-        ceoLoginMsg.textContent = data.message;
-        ceoLoginMsg.classList.remove('hidden');
-
-        if (response.ok) {
-            ceoLoginMsg.classList.remove('error-msg');
-            ceoLoginMsg.classList.add('success-msg');
-            displayTempMessage('CEO login successful!', true);
-            saveAuthData(data.token, { email: email, role: 'ceo', fullName: data.fullName || email });
-            showCEODashboard(); // Function to show CEO dashboard
-        } else {
-            ceoLoginMsg.classList.remove('success-msg');
-            ceoLoginMsg.classList.add('error-msg');
-            displayTempMessage(`CEO login failed: ${data.message}`, false);
-        }
-    } catch (error) {
-        console.error('Error during CEO login:', error);
-        ceoLoginMsg.textContent = 'Network error. Please try again.';
-        ceoLoginMsg.classList.remove('hidden');
-        ceoLoginMsg.classList.remove('success-msg');
-        ceoLoginMsg.classList.add('error-msg');
-        displayTempMessage('Network error during CEO login.', false);
+    // IMPORTANT: For a real application, CEO credentials should be stored securely
+    // in a database and compared using hashing (like bcrypt), not hardcoded.
+    // Ensure CEO_EMAIL and CEO_PASSWORD are set in your .env file for testing.
+    if (username === process.env.CEO_EMAIL && password === process.env.CEO_PASSWORD) {
+        // JWT token now expires in 7 days
+        const token = jwt.sign({ id: 'ceo_id', username: username, role: 'ceo' }, SECRET_KEY, { expiresIn: '7d' });
+        res.json({ message: 'CEO login successful!', token, role: 'ceo', fullName: 'CEO Admin' });
+    } else {
+        res.status(401).json({ message: 'Invalid CEO credentials.' });
     }
 });
 
-
-// --- Logout Functions ---
-function logoutUser() {
-    console.log('FUNC: logoutUser called. Logging out user.');
-    clearAuthData();
-    displayTempMessage('Logged out successfully!', true);
-    showLogin(); // Go back to login page
-}
-
-function logoutLeader() {
-    console.log('FUNC: logoutLeader called. Logging out leader.');
-    clearAuthData();
-    displayTempMessage('Leader logged out successfully!', true);
-    showLogin(); // Go back to login page
-}
-
-function logoutCEO() {
-    console.log('FUNC: logoutCEO called. Logging out CEO.');
-    clearAuthData();
-    displayTempMessage('CEO logged out successfully!', true);
-    showLogin(); // Go back to login page
-}
-
-// --- Dummy Functions for Dashboard Features (You'll implement these with backend calls) ---
-function showPaymentInstructions(method) {
-    console.log('FUNC: showPaymentInstructions called for method:', method);
-    const instructionsDiv = document.getElementById('paymentInstructions');
-    const allInfos = instructionsDiv.querySelectorAll('div');
-    allInfos.forEach(div => div.classList.add('hidden')); // Hide all instructions
-
-    if (method) {
-        document.getElementById(`${method}Info`).classList.remove('hidden');
-        instructionsDiv.style.display = 'block'; // Show the overall instructions div
-    } else {
-        instructionsDiv.style.display = 'none'; // Hide if no method selected
+// Add New Admin Route (FOR CEO)
+app.post('/api/ceo/add-admin', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'ceo') {
+        return res.status(403).json({ message: 'Access denied. Only CEO can add new admins.' });
     }
-}
 
-function showLeaderDashboard(leaderName) {
-    console.log('FUNC: showLeaderDashboard called for leader:', leaderName);
-    hideAllPanels();
-    document.getElementById('leaderPanel').classList.remove('hidden');
-    document.getElementById('leaderNameDisplay').textContent = leaderName;
-    // In a real app, fetch pending payments, user messages, rotation data etc.
-    fetchPendingPayments();
-    fetchUserMessages();
-    fetchRotationData();
-    fetchAllUsersForAdmin();
-    // No need to call generateReferralCode here unless you want it to auto-generate on load
-}
-
-function showCEODashboard() {
-    console.log('FUNC: showCEODashboard called.');
-    hideAllPanels();
-    document.getElementById('ceoPanel').classList.remove('hidden');
-    // In a real app, fetch CEO-specific data like rotation history, system activity
-    fetchCEORotationHistory();
-    fetchAdminHistory();
-    fetchGeneralHistory(); // Fetch general history for CEO
-}
-
-// Dummy fetch functions for leader/CEO dashboards
-async function fetchPendingPayments() {
-    console.log('Fetching pending payments...');
-    const list = document.getElementById('pendingPaymentsList');
-    list.innerHTML = '';
-    document.getElementById('noPendingPayments').classList.remove('hidden'); // Assume no data initially
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/leader/pending-payments`, {
-            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
-        });
-        const payments = await response.json();
-
-        if (response.ok && payments.length > 0) {
-            document.getElementById('noPendingPayments').classList.add('hidden');
-            payments.forEach(p => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <span>${p.userName} - $${p.amount.toFixed(2)} (${p.method}) - Status: <span class="status-unpaid">${p.status}</span></span>
-                    <button onclick="validatePayment('${p.id}')">Validate</button>
-                    <button style="background-color: #dc3545;" onclick="rejectPayment('${p.id}')">Reject</button>
-                `;
-                list.appendChild(li);
-            });
-        } else {
-            document.getElementById('noPendingPayments').classList.remove('hidden');
-        }
-    } catch (error) {
-        console.error('Error fetching pending payments:', error);
-        document.getElementById('noPendingPayments').textContent = 'Error loading payments.';
-        document.getElementById('noPendingPayments').classList.remove('hidden');
-    }
-}
-
-async function validatePayment(paymentId) {
-    console.log(`Validating payment ${paymentId}...`);
-    try {
-        const response = await fetch(`${API_BASE_URL}/leader/validate-payment`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentAuthToken}`
-            },
-            body: JSON.stringify({ paymentId })
-        });
-        const data = await response.json();
-        if (response.ok) {
-            displayTempMessage(data.message, true);
-            fetchPendingPayments(); // Refresh list
-            fetchAllUsersForAdmin(); // Refresh user list as status might change
-            fetchGeneralHistory(); // Refresh general history
-        } else {
-            displayTempMessage(`Validation failed: ${data.message}`, false);
-        }
-    } catch (error) {
-        console.error('Error validating payment:', error);
-        displayTempMessage('Network error during payment validation.', false);
-    }
-}
-
-async function rejectPayment(paymentId) {
-    console.log(`Rejecting payment ${paymentId}...`);
-    try {
-        const response = await fetch(`${API_BASE_URL}/leader/reject-payment`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentAuthToken}`
-            },
-            body: JSON.stringify({ paymentId })
-        });
-        const data = await response.json();
-        if (response.ok) {
-            displayTempMessage(data.message, true);
-            fetchPendingPayments(); // Refresh list
-            fetchGeneralHistory(); // Refresh general history
-        } else {
-            displayTempMessage(`Rejection failed: ${data.message}`, false);
-        }
-    } catch (error) {
-        console.error('Error rejecting payment:', error);
-        displayTempMessage('Network error during payment rejection.', false);
-    }
-}
-
-
-async function fetchUserMessages() {
-    console.log('Fetching user messages...');
-    const list = document.getElementById('userMessagesList');
-    list.innerHTML = '';
-    document.getElementById('noUserMessages').classList.remove('hidden');
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/leader/messages`, {
-            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
-        });
-        const messages = await response.json();
-
-        if (response.ok && messages.length > 0) {
-            document.getElementById('noUserMessages').classList.add('hidden');
-            messages.forEach(msg => {
-                const li = document.createElement('li');
-                li.classList.add(msg.read ? 'read' : 'unread');
-                li.innerHTML = `
-                    <strong>From: ${msg.email}</strong><br>
-                    Subject: ${msg.subject}<br>
-                    Message: ${msg.message}
-                    ${!msg.read ? `<button onclick="markMessageRead('${msg.id}')">Mark as Read</button>` : ''}
-                `;
-                list.appendChild(li);
-            });
-        } else {
-            document.getElementById('noUserMessages').classList.remove('hidden');
-        }
-    } catch (error) {
-        console.error('Error fetching user messages:', error);
-        document.getElementById('noUserMessages').textContent = 'Error loading messages.';
-        document.getElementById('noUserMessages').classList.remove('hidden');
-    }
-}
-
-async function markMessageRead(messageId) {
-    console.log(`Marking message ${messageId} as read...`);
-    try {
-        const response = await fetch(`${API_BASE_URL}/leader/messages/${messageId}/read`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentAuthToken}`
-            }
-        });
-        const data = await response.json();
-        if (response.ok) {
-            displayTempMessage(data.message, true);
-            fetchUserMessages(); // Refresh list
-            fetchGeneralHistory(); // Refresh general history
-        } else {
-            displayTempMessage(`Failed to mark message as read: ${data.message}`, false);
-        }
-    } catch (error) {
-        console.error('Error marking message as read:', error);
-        displayTempMessage('Network error marking message as read.', false);
-    }
-}
-
-// Dummy data for rotation (will be replaced by backend data)
-let rotationParticipants = []; // Stores user IDs or objects
-let currentRotationDay = 0;
-let currentRecipientIndex = -1;
-let dailyInvestmentAmount = 10; // Default
-
-async function fetchRotationData() {
-    console.log('Fetching rotation data...');
-    const select = document.getElementById('availableMembersSelect');
-    select.innerHTML = '<option value="">-- Select Paid & Active Member --</option>';
-
-    try {
-        const rotationResponse = await fetch(`${API_BASE_URL}/rotation/data`, {
-            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
-        });
-        const rotationData = await rotationResponse.json();
-
-        if (rotationResponse.ok) {
-            rotationParticipants = rotationData.participants || [];
-            currentRotationDay = rotationData.currentDay || 0;
-            currentRecipientIndex = rotationData.currentRecipientIndex !== undefined ? rotationData.currentRecipientIndex : -1;
-            dailyInvestmentAmount = rotationData.dailyInvestmentAmount || 10;
-
-            document.getElementById('currentRotationDay').textContent = currentRotationDay;
-            document.getElementById('dailyInvest').value = dailyInvestmentAmount;
-            updateRotationParticipantsList();
-            updateCurrentRecipientDisplay();
-
-            // Fetch all active and paid users to populate the dropdown
-            const usersResponse = await fetch(`${API_BASE_URL}/admin/users`, {
-                headers: { 'Authorization': `Bearer ${currentAuthToken}` }
-            });
-            const allUsers = await usersResponse.json();
-
-            if (usersResponse.ok) {
-                const activePaidUsers = allUsers.filter(user => user.isActive && user.isPaid && user.role === 'user');
-                activePaidUsers.forEach(user => {
-                    if (!rotationParticipants.some(p => p.id === user.id)) { // Don't add if already in rotation
-                        const option = document.createElement('option');
-                        option.value = user.id;
-                        option.textContent = user.fullName || user.username;
-                        select.appendChild(option);
-                    }
-                });
-            } else {
-                console.error('Failed to fetch users for rotation dropdown:', allUsers.message);
-            }
-        } else {
-            console.error('Failed to fetch rotation data:', rotationData.message);
-        }
-    } catch (error) {
-        console.error('Error fetching rotation data:', error);
-    }
-}
-
-function updateRotationParticipantsList() {
-    const list = document.getElementById('rotationParticipantsList');
-    list.innerHTML = '';
-    if (rotationParticipants.length === 0) {
-        document.getElementById('noActiveParticipants').classList.remove('hidden');
-    } else {
-        document.getElementById('noActiveParticipants').classList.add('hidden');
-        rotationParticipants.forEach((p, index) => {
-            const li = document.createElement('li');
-            li.textContent = p.fullName || p.username;
-            if (index === currentRecipientIndex) {
-                li.classList.add('current-recipient');
-            }
-            list.appendChild(li);
-        });
-    }
-}
-
-function updateCurrentRecipientDisplay() {
-    const display = document.getElementById('currentRecipientDisplay');
-    if (rotationParticipants.length > 0 && currentRecipientIndex !== -1) {
-        const recipient = rotationParticipants[currentRecipientIndex];
-        display.textContent = recipient.fullName || recipient.username;
-    } else {
-        display.textContent = 'N/A';
-    }
-}
-
-async function saveRotationSettings() {
-    dailyInvestmentAmount = parseFloat(document.getElementById('dailyInvest').value);
-    if (isNaN(dailyInvestmentAmount) || dailyInvestmentAmount <= 0) {
-        displayTempMessage('Investment must be a positive number.', false);
-        return;
-    }
-    try {
-        const response = await fetch(`${API_BASE_URL}/rotation/settings`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentAuthToken}`
-            },
-            body: JSON.stringify({ dailyInvestmentAmount })
-        });
-        const data = await response.json();
-        if (response.ok) {
-            displayTempMessage(data.message, true);
-            fetchGeneralHistory(); // Refresh general history
-        } else {
-            displayTempMessage(`Failed to update settings: ${data.message}`, false);
-        }
-    } catch (error) {
-        console.error('Error saving rotation settings:', error);
-        displayTempMessage('Network error saving rotation settings.', false);
-    }
-}
-
-async function addParticipantToRotation() {
-    const select = document.getElementById('availableMembersSelect');
-    const selectedUserId = select.value;
-    const selectedUserName = select.options[select.selectedIndex].textContent;
-    const addParticipantMsg = document.getElementById('addParticipantMsg');
-    addParticipantMsg.classList.add('hidden');
-
-    if (!selectedUserId) {
-        addParticipantMsg.textContent = 'Please select a member to add.';
-        addParticipantMsg.classList.remove('hidden');
-        addParticipantMsg.classList.add('error-msg');
-        return;
+    const { username, password, firstName, lastName, phoneNumber, role = 'leader' } = req.body;
+    if (!username || !password || !firstName || !lastName || !phoneNumber) {
+        return res.status(400).json({ message: 'All fields (username, password, first name, last name, phone number) are required for new admin.' });
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/rotation/participants`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentAuthToken}`
-            },
-            body: JSON.stringify({ userId: selectedUserId, username: selectedUserName, fullName: selectedUserName })
+        let users = await readJsonFile(USERS_FILE);
+
+        if (users.some(user => user.username === username)) {
+            return res.status(409).json({ message: 'Admin with this email already exists.' });
+        }
+
+        const newAdmin = {
+            id: uuidv4(),
+            username,
+            password, // In a real app, hash the password using bcrypt before saving!
+            firstName,
+            lastName,
+            phoneNumber,
+            role: role,
+            isPaid: true,
+            isActive: true
+        };
+
+        users.push(newAdmin);
+        await writeJsonFile(USERS_FILE, users);
+
+        // Log this action for general history
+        let generalHistory = await readJsonFile(ADMIN_ACTIVITY_FILE);
+        generalHistory.push({
+            id: uuidv4(),
+            timestamp: new Date().toISOString(),
+            type: 'New Admin Added',
+            description: `CEO ${req.user.username} added new admin: ${firstName} ${lastName} (${username}).`,
+            details: { adminId: newAdmin.id, username, role }
         });
-        const data = await response.json();
-        if (response.ok) {
-            displayTempMessage(data.message, true);
-            addParticipantMsg.classList.remove('error-msg');
-            addParticipantMsg.classList.add('success-msg');
-            addParticipantMsg.textContent = data.message;
-            select.value = ''; // Clear selection
-            fetchRotationData(); // Refresh list and dropdown
-            fetchGeneralHistory(); // Refresh general history
-        } else {
-            addParticipantMsg.textContent = `Failed to add participant: ${data.message}`;
-            addParticipantMsg.classList.remove('hidden');
-            addParticipantMsg.classList.add('error-msg');
-            displayTempMessage(`Failed to add participant: ${data.message}`, false);
-        }
-    } catch (error) {
-        console.error('Error adding participant:', error);
-        addParticipantMsg.textContent = 'Network error adding participant.';
-        addParticipantMsg.classList.remove('hidden');
-        addParticipantMsg.classList.add('error-msg');
-        displayTempMessage('Network error adding participant.', false);
-    }
-}
+        await writeJsonFile(ADMIN_ACTIVITY_FILE, generalHistory);
 
-async function nextParticipant() {
-    const rotationStatusMsg = document.getElementById('rotationStatusMsg');
-    rotationStatusMsg.classList.add('hidden');
+        res.status(201).json({ message: 'New admin added successfully!', admin: { id: newAdmin.id, username: newAdmin.username, fullName: `${firstName} ${lastName}` } });
 
-    if (rotationParticipants.length === 0) {
-        rotationStatusMsg.textContent = 'No participants in rotation to advance.';
-        rotationStatusMsg.classList.remove('hidden');
-        rotationStatusMsg.classList.add('error-msg');
-        displayTempMessage('No participants in rotation.', false);
-        return;
-    }
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/rotation/next`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentAuthToken}`
-            }
-        });
-        const data = await response.json();
-        if (response.ok) {
-            displayTempMessage(data.message, true);
-            // Update local state with new data from backend
-            currentRotationDay = data.rotationData.currentDay;
-            currentRecipientIndex = data.rotationData.currentRecipientIndex;
-            rotationParticipants = data.rotationData.participants; // Ensure participants are up-to-date
-            document.getElementById('currentRotationDay').textContent = currentRotationDay;
-            updateCurrentRecipientDisplay();
-            updateRotationParticipantsList(); // Update highlight
-            fetchCEORotationHistory(); // Refresh CEO history table
-            fetchGeneralHistory(); // Refresh general history
-            fetchAllUsersForAdmin(); // Refresh user list to show updated gains
-        } else {
-            rotationStatusMsg.textContent = `Rotation failed: ${data.message}`;
-            rotationStatusMsg.classList.remove('hidden');
-            rotationStatusMsg.classList.add('error-msg');
-            displayTempMessage(`Rotation failed: ${data.message}`, false);
-        }
-    } catch (error) {
-        console.error('Error advancing rotation:', error);
-        rotationStatusMsg.textContent = 'Network error advancing rotation.';
-        rotationStatusMsg.classList.remove('hidden');
-        rotationStatusMsg.classList.add('error-msg');
-        displayTempMessage('Network error advancing rotation.', false);
-    }
-}
-
-
-// Dummy data for user management
-let allUsers = []; // Stores all registered users (simulated)
-
-async function fetchAllUsersForAdmin() {
-    console.log('Fetching all users for admin...');
-    const tableBody = document.getElementById('adminUsersTable').querySelector('tbody');
-    tableBody.innerHTML = '';
-    document.getElementById('noUsersFound').classList.remove('hidden');
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/admin/users`, {
-            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
-        });
-        const users = await response.json();
-
-        if (response.ok && users.length > 0) {
-            document.getElementById('noUsersFound').classList.add('hidden');
-            allUsers = users; // Store fetched users
-            users.forEach(user => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${user.firstName || ''} ${user.lastName || ''}</td>
-                    <td>${user.username}</td>
-                    <td>${user.role || 'user'}</td>
-                    <td><span class="${user.isPaid ? 'status-paid' : 'status-unpaid'}">${user.isPaid ? 'Paid' : 'Unpaid'}</span></td>
-                    <td><span class="${user.isActive ? 'status-active' : 'status-inactive'}">${user.isActive ? 'Active' : 'Inactive'}</span></td>
-                    <td>
-                        <button onclick="toggleUserStatus('${user.id}', ${user.isActive})">${user.isActive ? 'Deactivate' : 'Activate'}</button>
-                        <button onclick="toggleUserPaymentStatus('${user.id}', ${user.isPaid})">${user.isPaid ? 'Mark Unpaid' : 'Mark Paid'}</button>
-                        <button style="background-color: #dc3545;" onclick="deleteUser('${user.id}')">Delete</button>
-                    </td>
-                `;
-                tableBody.appendChild(tr);
-            });
-        } else {
-            document.getElementById('noUsersFound').classList.remove('hidden');
-        }
-    }
-    catch (error) {
-        console.error('Error fetching all users for admin:', error);
-        document.getElementById('noUsersFound').textContent = 'Error loading users.';
-        document.getElementById('noUsersFound').classList.remove('hidden');
-    }
-}
-
-async function toggleUserStatus(userId, currentStatus) {
-    console.log(`Toggling status for user ${userId} to ${!currentStatus}...`);
-    try {
-        const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/status`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentAuthToken}`
-            },
-            body: JSON.stringify({ isActive: !currentStatus })
-        });
-        const data = await response.json();
-        if (response.ok) {
-            displayTempMessage(data.message, true);
-            fetchAllUsersForAdmin(); // Refresh table
-            fetchGeneralHistory(); // Refresh general history
-        } else {
-            displayTempMessage(`Status update failed: ${data.message}`, false);
-        }
-    } catch (error) {
-        console.error('Error toggling user status:', error);
-        displayTempMessage('Network error during user status update.', false);
-    }
-}
-
-async function toggleUserPaymentStatus(userId, currentPaidStatus) {
-    console.log(`Toggling payment status for user ${userId} to ${!currentPaidStatus}...`);
-    try {
-        const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/payment-status`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentAuthToken}`
-            },
-            body: JSON.stringify({ isPaid: !currentPaidStatus })
-        });
-        const data = await response.json();
-        if (response.ok) {
-            displayTempMessage(data.message, true);
-            fetchAllUsersForAdmin(); // Refresh table
-            fetchGeneralHistory(); // Refresh general history
-        } else {
-            displayTempMessage(`Payment status update failed: ${data.message}`, false);
-        }
-    } catch (error) {
-        console.error('Error toggling user payment status:', error);
-        displayTempMessage('Network error during user payment status update.', false);
-    }
-}
-
-async function deleteUser(userId) {
-    console.log(`Deleting user ${userId}...`);
-    // Replaced confirm() with a custom message box for better UX in an iframe environment
-    const confirmDelete = await new Promise(resolve => {
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            z-index: 1001; text-align: center;
-        `;
-        modal.innerHTML = `
-            <p>Are you sure you want to delete this user?</p>
-            <button id="confirmYes" style="margin-right: 10px;">Yes</button>
-            <button id="confirmNo" style="background-color: #6c757d;">No</button>
-        `;
-        document.body.appendChild(modal);
-
-        document.getElementById('confirmYes').onclick = () => { modal.remove(); resolve(true); };
-        document.getElementById('confirmNo').onclick = () => { modal.remove(); resolve(false); };
-    });
-
-    if (confirmDelete) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${currentAuthToken}`
-                }
-            });
-            const data = await response.json();
-            if (response.ok) {
-                displayTempMessage(data.message, true);
-                fetchAllUsersForAdmin(); // Refresh table
-                fetchGeneralHistory(); // Refresh general history
-            } else {
-                displayTempMessage(`User deletion failed: ${data.message}`, false);
-            }
-        } catch (error) {
-            console.error('Error deleting user:', error);
-            displayTempMessage('Network error during user deletion.', false);
-        }
-    }
-}
-
-// Referral Code Generator
-function generateReferralCode() {
-    const code = Math.random().toString(36).substring(2, 10).toUpperCase(); // Simple random code
-    document.getElementById('generatedReferralCode').textContent = code;
-    document.getElementById('generatedReferralCodeMsg').textContent = 'New referral code generated!';
-    document.getElementById('generatedReferralCodeMsg').classList.remove('hidden', 'error-msg');
-    document.getElementById('generatedReferralCodeMsg').classList.add('success-msg');
-    displayTempMessage('New referral code generated!', true);
-    // In a real app, send to backend: /api/admin/generate-referral-code (POST)
-    // and store it, maybe link to a leader
-}
-
-// CEO Dashboard Functions
-async function fetchCEORotationHistory() {
-    console.log('Fetching CEO rotation history...');
-    const tableBody = document.getElementById('ceoRotationHistoryTable').querySelector('tbody');
-    tableBody.innerHTML = '';
-    document.getElementById('noRotationHistory').classList.remove('hidden');
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/ceo/rotation-history`, {
-            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
-        });
-        const history = await response.json();
-
-        if (response.ok && history.length > 0) {
-            document.getElementById('noRotationHistory').classList.add('hidden');
-            history.forEach(entry => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${entry.day}</td>
-                    <td>${entry.recipient}</td>
-                    <td>$${entry.invest.toFixed(2)}</td>
-                    <td>$${entry.totalPool.toFixed(2)}</td>
-                    <td>$${entry.gain.toFixed(2)}</td>
-                    <td>${new Date(entry.timestamp).toLocaleString()}</td>
-                `;
-                tableBody.appendChild(tr);
-            });
-        } else {
-            document.getElementById('noRotationHistory').classList.remove('hidden');
-        }
-    } catch (error) {
-        console.error('Error fetching CEO rotation history:', error);
-        document.getElementById('noRotationHistory').textContent = 'Error loading rotation history.';
-        document.getElementById('noRotationHistory').classList.remove('hidden');
-    }
-}
-
-async function fetchAdminHistory() {
-    console.log('Fetching admin activity history...');
-    const tableBody = document.getElementById('adminHistoryTable').querySelector('tbody');
-    tableBody.innerHTML = '';
-    document.getElementById('noAdminHistory').classList.remove('hidden');
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/ceo/admin-history`, {
-            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
-        });
-        const history = await response.json();
-
-        if (response.ok && history.length > 0) {
-            document.getElementById('noAdminHistory').classList.add('hidden');
-            history.forEach(entry => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${new Date(entry.timestamp).toLocaleString()}</td>
-                    <td>${entry.type}</td>
-                    <td>${entry.description}</td>
-                    <td>${JSON.stringify(entry.details) || 'N/A'}</td>
-                `;
-                tableBody.appendChild(tr);
-            });
-        } else {
-            document.getElementById('noAdminHistory').classList.remove('hidden');
-        }
-    } catch (error) {
-        console.error('Error fetching admin history:', error);
-        document.getElementById('noAdminHistory').textContent = 'Error loading admin history.';
-        document.getElementById('noAdminHistory').classList.remove('hidden');
-    }
-}
-
-// NEW: Fetch General History for CEO
-async function fetchGeneralHistory() {
-    console.log('Fetching general history for CEO...');
-    const tableBody = document.getElementById('generalHistoryTable').querySelector('tbody');
-    tableBody.innerHTML = '';
-    document.getElementById('noGeneralHistory').classList.remove('hidden');
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/ceo/general-history`, {
-            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
-        });
-        const history = await response.json();
-
-        if (response.ok && history.length > 0) {
-            document.getElementById('noGeneralHistory').classList.add('hidden');
-            history.forEach(entry => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${new Date(entry.timestamp).toLocaleString()}</td>
-                    <td>${entry.type}</td>
-                    <td>${entry.description}</td>
-                    <td>${JSON.stringify(entry.details) || 'N/A'}</td>
-                `;
-                tableBody.appendChild(tr);
-            });
-        } else {
-            document.getElementById('noGeneralHistory').classList.remove('hidden');
-        }
-    } catch (error) {
-        console.error('Error fetching general history:', error);
-        document.getElementById('noGeneralHistory').textContent = 'Error loading general history.';
-        document.getElementById('noGeneralHistory').classList.remove('hidden');
-    }
-}
-
-
-async function addAdmin() {
-    console.log('Adding new admin...');
-    const firstName = document.getElementById('newAdminFirstName').value;
-    const lastName = document.getElementById('newAdminLastName').value;
-    const phoneNumber = document.getElementById('newAdminPhoneNumber').value;
-    const email = document.getElementById('newAdminEmail').value;
-    const password = document.getElementById('newAdminPass').value;
-    const newAdminMsg = document.getElementById('newAdminMsg');
-
-    newAdminMsg.classList.add('hidden');
-
-    if (!email || !password || !firstName || !lastName || !phoneNumber) {
-        newAdminMsg.textContent = 'All fields are required to add a new admin.';
-        newAdminMsg.classList.remove('hidden');
-        newAdminMsg.classList.add('error-msg');
-        return;
-    }
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/ceo/add-admin`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentAuthToken}` // CEO token
-            },
-            body: JSON.stringify({
-                username: email, // Email as username for backend
-                password: password,
-                firstName,
-                lastName,
-                phoneNumber,
-                role: 'leader' // New admins are typically leaders
-            })
-        });
-
-        const data = await response.json();
-        newAdminMsg.textContent = data.message;
-        newAdminMsg.classList.remove('hidden');
-
-        if (response.ok) {
-            newAdminMsg.classList.remove('error-msg');
-            newAdminMsg.classList.add('success-msg');
-            displayTempMessage('New admin added successfully!', true);
-            // Clear form fields manually as form.reset() might not work on dynamically added inputs
-            document.getElementById('newAdminFirstName').value = '';
-            document.getElementById('newAdminLastName').value = '';
-            document.getElementById('newAdminPhoneNumber').value = '';
-            document.getElementById('newAdminEmail').value = '';
-            document.getElementById('newAdminPass').value = '';
-            fetchGeneralHistory(); // Refresh general history
-        } else {
-            newAdminMsg.classList.remove('success-msg');
-            newAdminMsg.classList.add('error-msg');
-            displayTempMessage(`Failed to add admin: ${data.message}`, false);
-        }
     } catch (error) {
         console.error('Error adding new admin:', error);
-        newAdminMsg.textContent = 'Network error. Please try again.';
-        newAdminMsg.classList.remove('hidden');
-        newAdminMsg.classList.remove('success-msg');
-        newAdminMsg.classList.add('error-msg');
-        displayTempMessage('Network error adding admin.', false);
-    }
-}
-
-
-function calculRotation() {
-    console.log('Generating comprehensive report (simulated)...');
-    const ceoReportMsg = document.getElementById('ceoReportMsg');
-    ceoReportMsg.classList.remove('hidden');
-    ceoReportMsg.classList.remove('error-msg');
-    ceoReportMsg.classList.add('success-msg');
-    ceoReportMsg.textContent = 'Comprehensive report generation simulated. This would be a complex backend operation.';
-    displayTempMessage('Report generation simulated!', true);
-}
-
-// NEW: Export History to CSV
-function exportTableToCSV(tableId, filename = 'history.csv') {
-    const table = document.getElementById(tableId);
-    if (!table) {
-        displayTempMessage(`Table with ID '${tableId}' not found for export.`, false);
-        return;
-    }
-
-    let csv = [];
-    const rows = table.querySelectorAll('tr');
-
-    for (const row of rows) {
-        const cols = row.querySelectorAll('th, td');
-        const rowData = Array.from(cols).map(col => {
-            let text = col.innerText;
-            // Handle commas and quotes in data
-            if (text.includes(',') || text.includes('"')) {
-                text = `"${text.replace(/"/g, '""')}"`;
-            }
-            return text;
-        });
-        csv.push(rowData.join(','));
-    }
-
-    const csvString = csv.join('\n');
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(link.href);
-    displayTempMessage(`Exported ${filename} successfully!`, true);
-}
-
-
-// --- Initial Load Logic ---
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM Content Loaded. Initializing...');
-    // Check if a token exists, if so, try to show the appropriate panel
-    if (currentAuthToken && currentUserData.role) {
-        if (currentUserData.role === 'user') {
-            // In a real app, you'd verify the token with the backend first
-            // Now use isPaid and isActive from currentUserData
-            if (currentUserData.isPaid && currentUserData.isActive) {
-                showMainPlatform(currentUserData.fullName || currentUserData.email, currentUserData.invest, currentUserData.gain, currentUserData.referralCode);
-            } else if (!currentUserData.isPaid) {
-                showPaymentPanel(currentUserData.email);
-            } else { // User is active but not paid, or some other state
-                displayTempMessage('Your account is not active or payment is pending. Please contact support.', false);
-                showLogin(); // Keep on login or show a specific inactive message
-            }
-        } else if (currentUserData.role === 'leader') {
-            showLeaderDashboard(currentUserData.fullName || currentUserData.email);
-        } else if (currentUserData.role === 'ceo') {
-            showCEODashboard();
-        } else {
-            showLogin(); // Fallback if role is unknown
-        }
-    } else {
-        showSignUp(); // Default to sign up if no token
-    }
-
-    // Initial fetch for admin/leader dashboards if they are shown on load
-    if (!document.getElementById('leaderPanel').classList.contains('hidden')) {
-        fetchPendingPayments();
-        fetchUserMessages();
-        fetchRotationData();
-        fetchAllUsersForAdmin();
-    }
-    if (!document.getElementById('ceoPanel').classList.contains('hidden')) {
-        fetchCEORotationHistory();
-        fetchAdminHistory();
-        fetchGeneralHistory(); // Fetch general history on CEO dashboard load
+        res.status(500).json({ message: 'Server error when adding new admin.', error: error.message });
     }
 });
 
-// For the confirm dialog, replace with a custom modal in a production environment
-// window.confirm = (message) => {
-//     return customModalConfirm(message); // Implement your own modal
-// };
+// Leader: Fetch Pending Payments
+app.get('/api/leader/pending-payments', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'leader') {
+        return res.status(403).json({ message: 'Access denied. Only leaders can view pending payments.' });
+    }
+    try {
+        const pendingPayments = await readJsonFile(PENDING_PAYMENTS_FILE);
+        res.json(pendingPayments.filter(p => p.status === 'Pending'));
+    } catch (error) {
+        console.error('Error fetching pending payments:', error);
+        res.status(500).json({ message: 'Server error fetching pending payments.', error: error.message });
+    }
+});
+
+// Leader: Validate Payment
+app.post('/api/leader/validate-payment', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'leader') {
+        return res.status(403).json({ message: 'Access denied. Only leaders can validate payments.' });
+    }
+    const { paymentId } = req.body;
+    if (!paymentId) {
+        return res.status(400).json({ message: 'Payment ID is required.' });
+    }
+
+    try {
+        let pendingPayments = await readJsonFile(PENDING_PAYMENTS_FILE);
+        const paymentIndex = pendingPayments.findIndex(p => p.id === paymentId && p.status === 'Pending');
+
+        if (paymentIndex === -1) {
+            return res.status(404).json({ message: 'Pending payment not found or already processed.' });
+        }
+
+        pendingPayments[paymentIndex].status = 'Validated';
+        await writeJsonFile(PENDING_PAYMENTS_FILE, pendingPayments);
+
+        // Update user's isPaid status and add to invest/gain
+        let users = await readJsonFile(USERS_FILE);
+        const userIndex = users.findIndex(u => u.id === pendingPayments[paymentIndex].userId);
+
+        if (userIndex !== -1) {
+            users[userIndex].isPaid = true;
+            users[userIndex].isActive = true; // Also activate user on payment validation
+            users[userIndex].invest = (users[userIndex].invest || 0) + pendingPayments[paymentIndex].amount; // Add to invested amount
+            await writeJsonFile(USERS_FILE, users);
+        }
+
+        // Log this action for general history
+        let generalHistory = await readJsonFile(ADMIN_ACTIVITY_FILE);
+        generalHistory.push({
+            id: uuidv4(),
+            timestamp: new Date().toISOString(),
+            type: 'Payment Validated',
+            description: `Leader ${req.user.username} validated payment for ${pendingPayments[paymentIndex].userName}.`,
+            details: { paymentId, userId: pendingPayments[paymentIndex].userId, amount: pendingPayments[paymentIndex].amount }
+        });
+        await writeJsonFile(ADMIN_ACTIVITY_FILE, generalHistory);
+
+        res.json({ message: 'Payment validated successfully!' });
+    } catch (error) {
+        console.error('Error validating payment:', error);
+        res.status(500).json({ message: 'Server error validating payment.', error: error.message });
+    }
+});
+
+// Leader: Reject Payment
+app.post('/api/leader/reject-payment', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'leader') {
+        return res.status(403).json({ message: 'Access denied. Only leaders can reject payments.' });
+    }
+    const { paymentId } = req.body;
+    if (!paymentId) {
+        return res.status(400).json({ message: 'Payment ID is required.' });
+    }
+
+    try {
+        let pendingPayments = await readJsonFile(PENDING_PAYMENTS_FILE);
+        const paymentIndex = pendingPayments.findIndex(p => p.id === paymentId && p.status === 'Pending');
+
+        if (paymentIndex === -1) {
+            return res.status(404).json({ message: 'Pending payment not found or already processed.' });
+        }
+
+        pendingPayments[paymentIndex].status = 'Rejected';
+        await writeJsonFile(PENDING_PAYMENTS_FILE, pendingPayments);
+
+        // Log this action for general history
+        let generalHistory = await readJsonFile(ADMIN_ACTIVITY_FILE);
+        generalHistory.push({
+            id: uuidv4(),
+            timestamp: new Date().toISOString(),
+            type: 'Payment Rejected',
+            description: `Leader ${req.user.username} rejected payment for ${pendingPayments[paymentIndex].userName}.`,
+            details: { paymentId, userId: pendingPayments[paymentIndex].userId }
+        });
+        await writeJsonFile(ADMIN_ACTIVITY_FILE, generalHistory);
+
+        res.json({ message: 'Payment rejected successfully!' });
+    } catch (error) {
+        console.error('Error rejecting payment:', error);
+        res.status(500).json({ message: 'Server error rejecting payment.', error: error.message });
+    }
+});
+
+
+// Leader: Fetch User Messages
+app.get('/api/leader/messages', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'leader') {
+        return res.status(403).json({ message: 'Access denied. Only leaders can view messages.' });
+    }
+    try {
+        const messages = await readJsonFile(MESSAGES_FILE);
+        res.json(messages); // Return all messages for leaders to manage
+    } catch (error) {
+        console.error('Error fetching messages:', error);
+        res.status(500).json({ message: 'Server error fetching messages.', error: error.message });
+    }
+});
+
+// Leader: Mark Message as Read
+app.put('/api/leader/messages/:id/read', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'leader') {
+        return res.status(403).json({ message: 'Access denied. Only leaders can mark messages as read.' });
+    }
+    const messageId = req.params.id;
+
+    try {
+        let messages = await readJsonFile(MESSAGES_FILE);
+        const messageIndex = messages.findIndex(m => m.id === messageId);
+
+        if (messageIndex === -1) {
+            return res.status(404).json({ message: 'Message not found.' });
+        }
+
+        messages[messageIndex].read = true;
+        await writeJsonFile(MESSAGES_FILE, messages);
+
+        // Log this action for general history
+        let generalHistory = await readJsonFile(ADMIN_ACTIVITY_FILE);
+        generalHistory.push({
+            id: uuidv4(),
+            timestamp: new Date().toISOString(),
+            type: 'Message Marked Read',
+            description: `Leader ${req.user.username} marked message ${messageId} as read.`,
+            details: { messageId, senderEmail: messages[messageIndex].email }
+        });
+        await writeJsonFile(ADMIN_ACTIVITY_FILE, generalHistory);
+
+        res.json({ message: 'Message marked as read successfully!' });
+    } catch (error) {
+        console.error('Error marking message as read:', error);
+        res.status(500).json({ message: 'Server error marking message as read.', error: error.message });
+    }
+});
+
+// Leader/CEO: Fetch All Users
+app.get('/api/admin/users', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'leader' && req.user.role !== 'ceo') {
+        return res.status(403).json({ message: 'Access denied. Only leaders and CEO can view users.' });
+    }
+    try {
+        const users = await readJsonFile(USERS_FILE);
+        // Exclude sensitive data like password before sending to frontend
+        const safeUsers = users.map(({ password, ...rest }) => rest);
+        res.json(safeUsers);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ message: 'Server error fetching users.', error: error.message });
+    }
+});
+
+// Leader/CEO: Toggle User Status (Active/Inactive)
+app.put('/api/admin/users/:id/status', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'leader' && req.user.role !== 'ceo') {
+        return res.status(403).json({ message: 'Access denied. Only leaders and CEO can change user status.' });
+    }
+    const userId = req.params.id;
+    const { isActive } = req.body;
+    if (typeof isActive !== 'boolean') {
+        return res.status(400).json({ message: 'isActive (boolean) is required.' });
+    }
+
+    try {
+        let users = await readJsonFile(USERS_FILE);
+        const userIndex = users.findIndex(u => u.id === userId);
+
+        if (userIndex === -1) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+
+        users[userIndex].isActive = isActive;
+        await writeJsonFile(USERS_FILE, users);
+
+        // Log this action for general history
+        let generalHistory = await readJsonFile(ADMIN_ACTIVITY_FILE);
+        generalHistory.push({
+            id: uuidv4(),
+            timestamp: new Date().toISOString(),
+            type: 'User Status Update',
+            description: `${req.user.role} ${req.user.username} changed status of ${users[userIndex].username} to ${isActive ? 'Active' : 'Inactive'}.`,
+            details: { userId, isActive }
+        });
+        await writeJsonFile(ADMIN_ACTIVITY_FILE, generalHistory);
+
+        res.json({ message: `User status updated to ${isActive ? 'active' : 'inactive'}!` });
+    } catch (error) {
+        console.error('Error toggling user status:', error);
+        res.status(500).json({ message: 'Server error toggling user status.', error: error.message });
+    }
+});
+
+// Leader/CEO: Toggle User Payment Status
+app.put('/api/admin/users/:id/payment-status', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'leader' && req.user.role !== 'ceo') {
+        return res.status(403).json({ message: 'Access denied. Only leaders and CEO can change user payment status.' });
+    }
+    const userId = req.params.id;
+    const { isPaid } = req.body;
+    if (typeof isPaid !== 'boolean') {
+        return res.status(400).json({ message: 'isPaid (boolean) is required.' });
+    }
+
+    try {
+        let users = await readJsonFile(USERS_FILE);
+        const userIndex = users.findIndex(u => u.id === userId);
+
+        if (userIndex === -1) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+
+        users[userIndex].isPaid = isPaid;
+        await writeJsonFile(USERS_FILE, users);
+
+        // Log this action for general history
+        let generalHistory = await readJsonFile(ADMIN_ACTIVITY_FILE);
+        generalHistory.push({
+            id: uuidv4(),
+            timestamp: new Date().toISOString(),
+            type: 'User Payment Status Update',
+            description: `${req.user.role} ${req.user.username} changed payment status of ${users[userIndex].username} to ${isPaid ? 'Paid' : 'Unpaid'}.`,
+            details: { userId, isPaid }
+        });
+        await writeJsonFile(ADMIN_ACTIVITY_FILE, generalHistory);
+
+        res.json({ message: `User payment status updated to ${isPaid ? 'paid' : 'unpaid'}!` });
+    } catch (error) {
+        console.error('Error toggling user payment status:', error);
+        res.status(500).json({ message: 'Server error toggling user payment status.', error: error.message });
+    }
+});
+
+// Leader/CEO: Delete User
+app.delete('/api/admin/users/:id', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'leader' && req.user.role !== 'ceo') {
+        return res.status(403).json({ message: 'Access denied. Only leaders and CEO can delete users.' });
+    }
+    const userId = req.params.id;
+
+    try {
+        let users = await readJsonFile(USERS_FILE);
+        const initialLength = users.length;
+        users = users.filter(u => u.id !== userId);
+
+        if (users.length === initialLength) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+
+        await writeJsonFile(USERS_FILE, users);
+
+        // Log this action for general history
+        let generalHistory = await readJsonFile(ADMIN_ACTIVITY_FILE);
+        generalHistory.push({
+            id: uuidv4(),
+            timestamp: new Date().toISOString(),
+            type: 'User Deleted',
+            description: `${req.user.role} ${req.user.username} deleted user with ID ${userId}.`,
+            details: { userId }
+        });
+        await writeJsonFile(ADMIN_ACTIVITY_FILE, generalHistory);
+
+        res.json({ message: 'User deleted successfully!' });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({ message: 'Server error deleting user.', error: error.message });
+    }
+});
+
+// Leader: Get Rotation Data
+app.get('/api/rotation/data', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'leader' && req.user.role !== 'ceo') {
+        return res.status(403).json({ message: 'Access denied. Only leaders and CEO can view rotation data.' });
+    }
+    try {
+        const rotationData = await readJsonFile(ROTATION_DATA_FILE, { participants: [], currentDay: 0, currentRecipientIndex: -1, dailyInvestmentAmount: 10 });
+        res.json(rotationData);
+    } catch (error) {
+        console.error('Error fetching rotation data:', error);
+        res.status(500).json({ message: 'Server error fetching rotation data.', error: error.message });
+    }
+});
+
+// Leader: Save Rotation Settings
+app.put('/api/rotation/settings', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'leader' && req.user.role !== 'ceo') {
+        return res.status(403).json({ message: 'Access denied. Only leaders and CEO can update rotation settings.' });
+    }
+    const { dailyInvestmentAmount } = req.body;
+    if (typeof dailyInvestmentAmount !== 'number' || dailyInvestmentAmount <= 0) {
+        return res.status(400).json({ message: 'Daily investment amount must be a positive number.' });
+    }
+
+    try {
+        let rotationData = await readJsonFile(ROTATION_DATA_FILE, { participants: [], currentDay: 0, currentRecipientIndex: -1, dailyInvestmentAmount: 10 });
+        rotationData.dailyInvestmentAmount = dailyInvestmentAmount;
+        await writeJsonFile(ROTATION_DATA_FILE, rotationData);
+
+        // Log this action for general history
+        let generalHistory = await readJsonFile(ADMIN_ACTIVITY_FILE);
+        generalHistory.push({
+            id: uuidv4(),
+            timestamp: new Date().toISOString(),
+            type: 'Rotation Settings Update',
+            description: `${req.user.role} ${req.user.username} updated daily investment to $${dailyInvestmentAmount}.`,
+            details: { dailyInvestmentAmount }
+        });
+        await writeJsonFile(ADMIN_ACTIVITY_FILE, generalHistory);
+
+        res.json({ message: 'Rotation settings updated successfully!' });
+    } catch (error) {
+        console.error('Error saving rotation settings:', error);
+        res.status(500).json({ message: 'Server error saving rotation settings.', error: error.message });
+    }
+});
+
+// Leader: Add Participant to Rotation
+app.post('/api/rotation/participants', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'leader' && req.user.role !== 'ceo') {
+        return res.status(403).json({ message: 'Access denied. Only leaders and CEO can add rotation participants.' });
+    }
+    const { userId, username, fullName } = req.body;
+    if (!userId || !username || !fullName) {
+        return res.status(400).json({ message: 'User ID, username, and full name are required to add a participant.' });
+    }
+
+    try {
+        let rotationData = await readJsonFile(ROTATION_DATA_FILE, { participants: [], currentDay: 0, currentRecipientIndex: -1, dailyInvestmentAmount: 10 });
+
+        if (rotationData.participants.some(p => p.id === userId)) {
+            return res.status(409).json({ message: 'Participant is already in the rotation.' });
+        }
+
+        const newParticipant = { id: userId, username, fullName };
+        rotationData.participants.push(newParticipant);
+        await writeJsonFile(ROTATION_DATA_FILE, rotationData);
+
+        // Log this action for general history
+        let generalHistory = await readJsonFile(ADMIN_ACTIVITY_FILE);
+        generalHistory.push({
+            id: uuidv4(),
+            timestamp: new Date().toISOString(),
+            type: 'Participant Added to Rotation',
+            description: `${req.user.role} ${req.user.username} added ${fullName} to rotation.`,
+            details: { userId, fullName }
+        });
+        await writeJsonFile(ADMIN_ACTIVITY_FILE, generalHistory);
+
+        res.json({ message: `${fullName} added to rotation!` });
+    } catch (error) {
+        console.error('Error adding participant to rotation:', error);
+        res.status(500).json({ message: 'Server error adding participant to rotation.', error: error.message });
+    }
+});
+
+// Leader: Advance Rotation to Next Participant
+app.post('/api/rotation/next', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'leader' && req.user.role !== 'ceo') {
+        return res.status(403).json({ message: 'Access denied. Only leaders and CEO can advance rotation.' });
+    }
+
+    try {
+        let rotationData = await readJsonFile(ROTATION_DATA_FILE, { participants: [], currentDay: 0, currentRecipientIndex: -1, dailyInvestmentAmount: 10 });
+        let users = await readJsonFile(USERS_FILE);
+        let rotationHistory = await readJsonFile(ROTATION_HISTORY_FILE);
+
+        if (rotationData.participants.length === 0) {
+            return res.status(400).json({ message: 'No participants in rotation to advance.' });
+        }
+
+        rotationData.currentDay++;
+        rotationData.currentRecipientIndex = (rotationData.currentRecipientIndex + 1) % rotationData.participants.length;
+        const currentRecipient = rotationData.participants[rotationData.currentRecipientIndex];
+
+        const totalPool = rotationData.participants.length * rotationData.dailyInvestmentAmount;
+        const recipientGain = totalPool; // Recipient gets the whole pool
+
+        // Update recipient's gain
+        const recipientUserIndex = users.findIndex(u => u.id === currentRecipient.id);
+        if (recipientUserIndex !== -1) {
+            users[recipientUserIndex].gain = (users[recipientUserIndex].gain || 0) + recipientGain;
+            await writeJsonFile(USERS_FILE, users);
+        }
+
+        // Add to rotation history
+        rotationHistory.push({
+            id: uuidv4(),
+            day: rotationData.currentDay,
+            recipient: currentRecipient.fullName || currentRecipient.username,
+            invest: rotationData.dailyInvestmentAmount,
+            totalPool: totalPool,
+            gain: recipientGain,
+            timestamp: new Date().toISOString()
+        });
+        await writeJsonFile(ROTATION_HISTORY_FILE, rotationHistory);
+        await writeJsonFile(ROTATION_DATA_FILE, rotationData);
+
+        // Log this action for general history
+        let generalHistory = await readJsonFile(ADMIN_ACTIVITY_FILE);
+        generalHistory.push({
+            id: uuidv4(),
+            timestamp: new Date().toISOString(),
+            type: 'Rotation Advanced',
+            description: `${req.user.role} ${req.user.username} advanced rotation. Day ${rotationData.currentDay}, ${currentRecipient.fullName} received $${recipientGain.toFixed(2)}.`,
+            details: { day: rotationData.currentDay, recipientId: currentRecipient.id, gain: recipientGain }
+        });
+        await writeJsonFile(ADMIN_ACTIVITY_FILE, generalHistory);
+
+
+        res.json({ message: `Day ${rotationData.currentDay}: ${currentRecipient.fullName || currentRecipient.username} receives $${recipientGain.toFixed(2)}!`, rotationData });
+    } catch (error) {
+        console.error('Error advancing rotation:', error);
+        res.status(500).json({ message: 'Server error advancing rotation.', error: error.message });
+    }
+});
+
+
+// CEO: Fetch Rotation History
+app.get('/api/ceo/rotation-history', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'ceo') {
+        return res.status(403).json({ message: 'Access denied. Only CEO can view rotation history.' });
+    }
+    try {
+        const history = await readJsonFile(ROTATION_HISTORY_FILE);
+        res.json(history);
+    } catch (error) {
+        console.error('Error fetching CEO rotation history:', error);
+        res.status(500).json({ message: 'Server error fetching CEO rotation history.', error: error.message });
+    }
+});
+
+// CEO: Fetch Admin Activity History
+app.get('/api/ceo/admin-history', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'ceo') {
+        return res.status(403).json({ message: 'Access denied. Only CEO can view admin activity history.' });
+    }
+    try {
+        const history = await readJsonFile(ADMIN_ACTIVITY_FILE);
+        // Filter out sensitive details if necessary, or just return all admin actions
+        res.json(history.filter(entry => entry.type !== 'Support Message Received')); // Admin history specifically for actions, not support messages
+    } catch (error) {
+        console.error('Error fetching admin history:', error);
+        res.status(500).json({ message: 'Server error fetching admin history.', error: error.message });
+    }
+});
+
+// CEO: Fetch General System History (including support messages)
+app.get('/api/ceo/general-history', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'ceo') {
+        return res.status(403).json({ message: 'Access denied. Only CEO can view general system history.' });
+    }
+    try {
+        const generalHistory = await readJsonFile(ADMIN_ACTIVITY_FILE);
+        const messages = await readJsonFile(MESSAGES_FILE);
+
+        // Combine admin activities and support messages into a single history feed
+        const combinedHistory = [
+            ...generalHistory,
+            ...messages.map(msg => ({
+                id: msg.id,
+                timestamp: msg.timestamp,
+                type: 'Support Message',
+                description: `Message from ${msg.email}: ${msg.subject}`,
+                details: { message: msg.message, read: msg.read }
+            }))
+        ];
+
+        // Sort by timestamp descending
+        combinedHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        res.json(combinedHistory);
+    } catch (error) {
+        console.error('Error fetching general history:', error);
+        res.status(500).json({ message: 'Server error fetching general history.', error: error.message });
+    }
+});
+
+
+// --- END OF YOUR API ROUTES ---
+
+
+// --- START OF ERROR HANDLING MIDDLEWARE ---
+
+// 404 Not Found Handler: This middleware will catch any requests that don't match existing routes.
+app.use((req, res, next) => {
+    res.status(404).json({
+        message: 'Endpoint Not Found',
+        path: req.originalUrl,
+        method: req.method
+    });
+});
+
+// General Error Handler: This catches any errors thrown by your routes or other middleware.
+// It should be the last middleware in your chain.
+app.use((err, req, res, next) => {
+    console.error(err.stack); // Log the error stack for debugging
+    res.status(err.statusCode || 500).json({
+        message: err.message || 'An unexpected error occurred',
+        error: process.env.NODE_ENV === 'production' ? {} : err.stack // Provide stack trace in dev
+    });
+});
+
+// --- END OF ERROR HANDLING MIDDLEWARE ---
+
+
+// Start the server only after initial data is loaded
+loadAllData().then(() => {
+    app.listen(PORT, () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+        console.log('Backend ready. Ensure your frontend is pointing to this address.');
+    });
+}).catch(err => {
+    console.error('Failed to load initial data or start server:', err);
+    process.exit(1); // Exit the process if critical initial data loading fails
+});
