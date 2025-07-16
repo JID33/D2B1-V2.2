@@ -182,27 +182,27 @@
         .status-unpaid { color: #dc3545; font-weight: bold; }
 
         /* Admin History Table */
-        #adminHistoryTable {
+        #adminHistoryTable, #generalHistoryTable { /* Apply to both history tables */
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
             font-size: 0.9em;
         }
-        #adminHistoryTable th,
-        #adminHistoryTable td {
+        #adminHistoryTable th, #generalHistoryTable th,
+        #adminHistoryTable td, #generalHistoryTable td {
             border: 1px solid #ddd;
             padding: 8px;
             text-align: left;
             vertical-align: top;
         }
-        #adminHistoryTable th {
+        #adminHistoryTable th, #generalHistoryTable th {
             background-color: #f0ad4e; /* Orange for history */
             color: white;
         }
-        #adminHistoryTable tbody tr:nth-child(even) {
+        #adminHistoryTable tbody tr:nth-child(even), #generalHistoryTable tbody tr:nth-child(even) {
             background-color: #f9f9f9;
         }
-        #noAdminHistory {
+        #noAdminHistory, #noGeneralHistory { /* Apply to both no history messages */
             font-style: italic;
             color: #777;
             text-align: center;
@@ -250,6 +250,14 @@
         }
         .admin-access-btn:hover {
             background-color: #5a6268;
+        }
+        .export-button {
+            background-color: #17a2b8; /* Info blue */
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+        .export-button:hover {
+            background-color: #138496;
         }
     </style>
     <script src="script.js" defer></script>
@@ -614,6 +622,26 @@
     </table>
     <p id="noAdminHistory" class="hidden">No system history available yet.</p>
     
+    <hr>
+    <!-- NEW: All System History Section for CEO -->
+    <h3>📜 All System History:</h3>
+    <button class="export-button" onclick="exportTableToCSV('generalHistoryTable', 'all_system_history.csv')">Export All History to CSV</button>
+    <table id="generalHistoryTable">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- History entries will be loaded here by JavaScript -->
+        </tbody>
+    </table>
+    <p id="noGeneralHistory" class="hidden">No general system history available yet.</p>
+    <!-- END NEW: All System History Section -->
+
     <hr>
     <div class="form-section">
         <h3>👥 Add New Admin (CEO Only)</h3>
