@@ -1,540 +1,1064 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dream2Build</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-</head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+console.log("Script loaded successfully!"); // Added for debugging
 
-    <!-- Message Display Area (for displayTempMessage) -->
-    <div id="tempMessageContainer"></div>
+// Function to display temporary messages (replaces alerts)
+function displayTempMessage(message, isSuccess = true) {
+    const msgDiv = document.createElement('div');
+    msgDiv.textContent = message;
+    msgDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 15px 25px;
+        background-color: ${isSuccess ? '#d4edda' : '#f8d7da'};
+        color: ${isSuccess ? '#155724' : '#721c24'};
+        border: 1px solid ${isSuccess ? '#c3e6cb' : '#f5c6cb'};
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        z-index: 1000;
+        font-weight: bold;
+        opacity: 0;
+        transition: opacity 0.5s ease-in-out;
+    `;
+    document.body.appendChild(msgDiv);
 
-    <!-- Main Container -->
-    <div class="relative w-full max-w-md bg-white p-8 rounded-lg shadow-lg">
+    setTimeout(() => {
+        msgDiv.style.opacity = '1';
+    }, 10); // Small delay to allow transition
 
-        <h2 class="text-2xl font-bold text-center mb-6 text-indigo-600">Dream2Build</h2>
-
-        <!-- Sign Up Panel -->
-        <div id="signUpPanel" class="panel">
-            <h3 class="text-xl font-semibold mb-4 text-center">Sign Up</h3>
-            <form id="signUpForm" class="space-y-4">
-                <div>
-                    <label for="firstName" class="block text-sm font-medium text-gray-700">First Name</label>
-                    <input type="text" id="firstName" name="firstName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="lastName" class="block text-sm font-medium text-gray-700">Last Name</label>
-                    <input type="text" id="lastName" name="lastName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="phoneNumber" class="block text-sm font-medium text-gray-700">Phone Number</label>
-                    <input type="tel" id="phoneNumber" name="phoneNumber" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-                    <input type="email" id="email" name="email" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-                    <input type="password" id="password" name="password" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="confirmPassword" class="block text-sm font-medium text-gray-700">Confirm Password</label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="referralCode" class="block text-sm font-medium text-gray-700">Referral Code (Optional)</label>
-                    <input type="text" id="referralCode" name="referralCode" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                </div>
-                <button type="submit" class="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Sign Up</button>
-                <p id="signUpMsg" class="text-center text-sm mt-2 hidden"></p>
-            </form>
-            <p class="text-center text-sm mt-4">Already have an account? <a href="#" onclick="showLogin()" class="text-indigo-600 hover:underline">Login here</a></p>
-            <p class="text-center text-sm mt-2">Admin/Leader? <a href="#" onclick="showAdminLoginRegister()" class="text-indigo-600 hover:underline">Login here</a></p>
-            <p class="text-center text-sm mt-2">Need help? <a href="#" onclick="showContactAdmin()" class="text-indigo-600 hover:underline">Contact Admin</a></p>
-
-        </div>
-
-        <!-- Login Panel (hidden by default) -->
-        <div id="loginPanel" class="panel hidden">
-            <h3 class="text-xl font-semibold mb-4 text-center">Login</h3>
-            <form id="loginForm" class="space-y-4">
-                <div>
-                    <label for="loginEmail" class="block text-sm font-medium text-gray-700">Email</label>
-                    <input type="email" id="loginEmail" name="loginEmail" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="loginPassword" class="block text-sm font-medium text-gray-700">Password</label>
-                    <input type="password" id="loginPassword" name="loginPassword" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <button type="submit" class="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Login</button>
-                <p id="loginMsg" class="text-center text-sm mt-2 hidden"></p>
-            </form>
-            <p class="text-center text-sm mt-4">Don't have an account? <a href="#" onclick="showSignUp()" class="text-indigo-600 hover:underline">Sign Up here</a></p>
-            <p class="text-center text-sm mt-2">Admin/Leader? <a href="#" onclick="showAdminLoginRegister()" class="text-indigo-600 hover:underline">Login here</a></p>
-            <p class="text-center text-sm mt-2">Need help? <a href="#" onclick="showContactAdmin()" class="text-indigo-600 hover:underline">Contact Admin</a></p>
-        </div>
-
-        <!-- Verification Message Panel (hidden by default) -->
-        <div id="verificationMessagePanel" class="panel hidden">
-            <h3 class="text-xl font-semibold mb-4 text-center">Verify Your Account</h3>
-            <p class="text-center text-gray-700 mb-4">A verification link has been sent to <span id="verificationEmailDisplay" class="font-bold"></span>. Please check your email to activate your account.</p>
-            <p class="text-center text-sm mt-4">Already verified? <a href="#" onclick="showLogin()" class="text-indigo-600 hover:underline">Login here</a></p>
-        </div>
-
-        <!-- Payment Panel (hidden by default) -->
-        <div id="paymentPanel" class="panel hidden">
-            <h3 class="text-xl font-semibold mb-4 text-center">Payment for <span id="paymentUserName" class="font-bold"></span></h3>
-            <p class="text-center text-gray-700 mb-4">Please make a payment of $25 to activate your account.</p>
-            <form id="paymentForm" class="space-y-4">
-                <div>
-                    <label for="paymentMethod" class="block text-sm font-medium text-gray-700">Payment Method</label>
-                    <select id="paymentMethod" name="paymentMethod" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" onchange="showPaymentInstructions(this.value)" required>
-                        <option value="">Select a method</option>
-                        <option value="moncash">MonCash</option>
-                        <option value="natcash">NatCash</option>
-                        <option value="banktransfer">Bank Transfer</option>
-                        <option value="cash">Cash</option>
-                    </select>
-                </div>
-
-                <div id="paymentInstructions" class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md hidden">
-                    <h4 class="font-semibold text-blue-800 mb-2">Payment Instructions:</h4>
-                    <div id="moncashInfo" class="hidden">
-                        <p><strong>MonCash:</strong> Send $25 to MonCash number: 509-XXXX-XXXX</p>
-                        <p>Reference: Your Email (<span id="moncashEmailRef" class="font-bold"></span>)</p>
-                    </div>
-                    <div id="natcashInfo" class="hidden">
-                        <p><strong>NatCash:</strong> Send $25 to NatCash number: 509-YYYY-YYYY</p>
-                        <p>Reference: Your Email (<span id="natcashEmailRef" class="font-bold"></span>)</p>
-                    </div>
-                    <div id="banktransferInfo" class="hidden">
-                        <p><strong>Bank Transfer:</strong> Transfer $25 to Bank Name: ABC Bank, Account No: 123456789</p>
-                        <p>Reference: Your Email (<span id="banktransferEmailRef" class="font-bold"></span>)</p>
-                    </div>
-                    <div id="cashInfo" class="hidden">
-                        <p><strong>Cash:</strong> Contact a team leader to arrange a cash payment.</p>
-                        <p>Reference: Your Email (<span id="cashEmailRef" class="font-bold"></span>)</p>
-                    </div>
-                    <p class="mt-2 text-sm text-blue-700">Your account will be activated after payment validation by a team leader.</p>
-                </div>
-
-                <button type="submit" class="w-full bg-green-600 text-white p-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Submit Payment Info</button>
-                <p id="paymentMsg" class="text-center text-sm mt-2 hidden"></p>
-            </form>
-            <p class="text-center text-sm mt-4"><a href="#" onclick="logoutUser()" class="text-red-600 hover:underline">Logout</a></p>
-        </div>
-
-        <!-- Main Platform Panel (hidden by default) -->
-        <div id="mainPlatformPanel" class="panel hidden">
-            <h3 class="text-xl font-semibold mb-4 text-center">Welcome, <span id="loggedInUserName" class="font-bold text-indigo-600"></span>!</h3>
-            <p id="adminAreaNote" class="text-center text-red-500 mb-4 font-semibold"></p>
-
-            <div id="participantFinancials" class="space-y-2 mb-6 p-4 border border-gray-200 rounded-md bg-gray-50">
-                <p class="text-gray-700">Total Invested: $<span id="participantInvest" class="font-bold">0.00</span></p>
-                <p class="text-gray-700">Total Gain: $<span id="participantGain" class="font-bold">0.00</span></p>
-                <p class="text-gray-700">Your Referral Code: <span id="participantReferralCode" class="font-bold text-indigo-600">N/A</span></p>
-            </div>
-
-            <h4 class="font-semibold text-lg mb-2">Platform Features:</h4>
-            <ul class="list-disc list-inside space-y-1 mb-6">
-                <li>View your earnings and investments.</li>
-                <li>Participate in the daily rotation.</li>
-                <li>Refer new members to earn bonuses.</li>
-            </ul>
-
-            <button onclick="logoutUser()" class="w-full bg-red-600 text-white p-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">Logout</button>
-        </div>
-
-        <!-- Leader Login Panel (hidden by default) -->
-        <div id="leaderLoginPanel" class="panel hidden">
-            <h3 class="text-xl font-semibold mb-4 text-center">Team Leader Login</h3>
-            <form id="leaderLoginForm" class="space-y-4">
-                <div>
-                    <label for="loginLeaderEmail" class="block text-sm font-medium text-gray-700">Email</label>
-                    <input type="email" id="loginLeaderEmail" name="loginLeaderEmail" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="loginLeaderPass" class="block text-sm font-medium text-gray-700">Password</label>
-                    <input type="password" id="loginLeaderPass" name="loginLeaderPass" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Leader Login</button>
-                <p id="leaderLoginMsg" class="text-center text-sm mt-2 hidden"></p>
-            </form>
-            <p class="text-center text-sm mt-4">Not a leader? <a href="#" onclick="showLogin()" class="text-indigo-600 hover:underline">Back to User Login</a></p>
-            <p class="text-center text-sm mt-2">Are you a new Leader? <a href="#" onclick="showLeaderRegisterOnly()" class="text-indigo-600 hover:underline">Register here</a></p>
-            <p class="text-center text-sm mt-2">CEO? <a href="#" onclick="showCEOLogin()" class="text-indigo-600 hover:underline">Login here</a></p>
-        </div>
-
-        <!-- Leader Registration Panel (hidden by default) -->
-        <div id="leaderRegisterPanel" class="panel hidden">
-            <h3 class="text-xl font-semibold mb-4 text-center">Team Leader Registration</h3>
-            <form id="leaderRegisterForm" class="space-y-4">
-                <div>
-                    <label for="leaderFirstName" class="block text-sm font-medium text-gray-700">First Name</label>
-                    <input type="text" id="leaderFirstName" name="leaderFirstName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="leaderLastName" class="block text-sm font-medium text-gray-700">Last Name</label>
-                    <input type="text" id="leaderLastName" name="leaderLastName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="leaderPhoneNumber" class="block text-sm font-medium text-gray-700">Phone Number</label>
-                    <input type="tel" id="leaderPhoneNumber" name="leaderPhoneNumber" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="leaderEmail" class="block text-sm font-medium text-gray-700">Email</label>
-                    <input type="email" id="leaderEmail" name="leaderEmail" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="leaderPassword" class="block text-sm font-medium text-gray-700">Password</label>
-                    <input type="password" id="leaderPassword" name="leaderPassword" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="leaderConfirmPassword" class="block text-sm font-medium text-gray-700">Confirm Password</label>
-                    <input type="password" id="leaderConfirmPassword" name="leaderConfirmPassword" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Register as Leader</button>
-                <p id="leaderRegisterMsg" class="text-center text-sm mt-2 hidden"></p>
-            </form>
-            <p class="text-center text-sm mt-4">Already registered? <a href="#" onclick="showLeaderLoginOnly()" class="text-indigo-600 hover:underline">Login here</a></p>
-        </div>
+    setTimeout(() => {
+        msgDiv.style.opacity = '0';
+        msgDiv.addEventListener('transitionend', () => msgDiv.remove());
+    }, 3000); // Message disappears after 3 seconds
+}
 
 
-        <!-- CEO Login Panel (hidden by default) -->
-        <div id="ceoLoginPanel" class="panel hidden">
-            <h3 class="text-xl font-semibold mb-4 text-center">CEO Login</h3>
-            <form id="ceoLoginForm" class="space-y-4">
-                <div>
-                    <label for="ceoLoginEmail" class="block text-sm font-medium text-gray-700">Email</label>
-                    <input type="email" id="ceoLoginEmail" name="ceoLoginEmail" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="ceoLoginPassword" class="block text-sm font-medium text-gray-700">Password</label>
-                    <input type="password" id="ceoLoginPassword" name="ceoLoginPassword" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <button type="submit" class="w-full bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">CEO Login</button>
-                <p id="ceoLoginMsg" class="text-center text-sm mt-2 hidden"></p>
-            </form>
-            <p class="text-center text-sm mt-4">Not CEO? <a href="#" onclick="showAdminLoginRegister()" class="text-indigo-600 hover:underline">Back to Admin/Leader Login</a></p>
-        </div>
+// --- Configuration for your Backend API ---
+// IMPORTANT: Replace this with your actual backend server's URL when deployed!
+const API_BASE_URL = 'http://localhost:3000/api'; // For local testing, assuming backend runs on port 3000
 
-        <!-- Leader Panel (hidden by default) -->
-        <div id="leaderPanel" class="panel hidden">
-            <h3 class="text-xl font-semibold mb-4 text-center">Team Leader Dashboard</h3>
-            <p class="text-center text-gray-700 mb-4">Welcome, <span id="leaderNameDisplay" class="font-bold text-blue-600">Leader</span>!</p>
+// --- Helper Functions to Toggle Panels ---
+function hideAllPanels() {
+    console.log('FUNC: hideAllPanels called. Hiding all panels...');
+    document.getElementById('signUpPanel').classList.add('hidden');
+    document.getElementById('loginPanel').classList.add('hidden');
+    document.getElementById('verificationMessagePanel').classList.add('hidden');
+    document.getElementById('paymentPanel').classList.add('hidden');
+    document.getElementById('mainPlatformPanel').classList.add('hidden');
+    document.getElementById('leaderRegisterPanel').classList.add('hidden'); // Add Admin panel
+    document.getElementById('leaderLoginPanel').classList.add('hidden');
+    document.getElementById('ceoLoginPanel').classList.add('hidden');
+    document.getElementById('leaderPanel').classList.add('hidden');
+    document.getElementById('ceoPanel').classList.add('hidden');
+    document.getElementById('contactAdminPanel').classList.add('hidden');
+    console.log('FUNC: hideAllPanels completed. All panels hidden.');
+}
 
-            <!-- Tabs for Leader Dashboard -->
-            <div class="flex border-b border-gray-200 mb-4">
-                <button class="tab-button active-tab" onclick="openLeaderTab(event, 'leaderPayments')">Pending Payments</button>
-                <button class="tab-button" onclick="openLeaderTab(event, 'leaderMessages')">User Messages</button>
-                <button class="tab-button" onclick="openLeaderTab(event, 'leaderRotation')">Rotation Management</button>
-                <button class="tab-button" onclick="openLeaderTab(event, 'leaderUsers')">Manage Users</button>
-                <button class="tab-button" onclick="openLeaderTab(event, 'leaderReferral')">Referral Code</button>
-            </div>
+function showSignUp() {
+    console.log('FUNC: showSignUp called. Attempting to show Sign Up panel...');
+    hideAllPanels();
+    document.getElementById('signUpPanel').classList.remove('hidden');
+    console.log('FUNC: showSignUp completed. Sign Up panel should be visible.');
+}
 
-            <!-- Pending Payments Tab Content -->
-            <div id="leaderPayments" class="tab-content">
-                <h4 class="font-semibold text-lg mb-2">Pending Payments for Validation</h4>
-                <ul id="pendingPaymentsList" class="list-disc list-inside space-y-2">
-                    <!-- Payments will be loaded here by JavaScript -->
-                </ul>
-                <p id="noPendingPayments" class="text-center text-gray-500 mt-4">No pending payments.</p>
-            </div>
+function showLogin() {
+    console.log('FUNC: showLogin called. Attempting to show Login panel...');
+    hideAllPanels();
+    const loginPanel = document.getElementById('loginPanel');
+    if (loginPanel) {
+        loginPanel.classList.remove('hidden');
+        console.log('FUNC: showLogin completed. Login panel should be visible.');
+    } else {
+        console.error('ERROR: loginPanel element not found!');
+    }
+}
 
-            <!-- User Messages Tab Content -->
-            <div id="leaderMessages" class="tab-content hidden">
-                <h4 class="font-semibold text-lg mb-2">User Messages</h4>
-                <ul id="userMessagesList" class="list-disc list-inside space-y-2">
-                    <!-- Messages will be loaded here by JavaScript -->
-                </ul>
-                <p id="noUserMessages" class="text-center text-gray-500 mt-4">No user messages.</p>
-            </div>
+function showVerificationMessage(email) {
+    console.log('FUNC: showVerificationMessage called for email:', email);
+    hideAllPanels();
+    document.getElementById('verificationMessagePanel').classList.remove('hidden');
+    document.getElementById('verificationEmailDisplay').textContent = email;
+    console.log('FUNC: showVerificationMessage completed. Verification panel should be visible.');
+}
 
-            <!-- Rotation Management Tab Content -->
-            <div id="leaderRotation" class="tab-content hidden">
-                <h4 class="font-semibold text-lg mb-2">Rotation Management</h4>
-                <div class="space-y-4">
-                    <div>
-                        <p>Current Rotation Day: <span id="currentRotationDay" class="font-bold">0</span></p>
-                        <p>Current Recipient: <span id="currentRecipientDisplay" class="font-bold">N/A</span></p>
-                    </div>
-                    <div>
-                        <label for="dailyInvest" class="block text-sm font-medium text-gray-700">Daily Investment Amount ($)</label>
-                        <input type="number" id="dailyInvest" value="10" min="1" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
-                        <button onclick="saveRotationSettings()" class="mt-2 bg-green-500 text-white p-2 rounded-md hover:bg-green-600">Save Daily Investment</button>
-                    </div>
-                    <div>
-                        <button onclick="nextParticipant()" class="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Advance Rotation to Next Participant</button>
-                        <p id="rotationStatusMsg" class="text-center text-sm mt-2 hidden"></p>
-                    </div>
-                    <div>
-                        <h5 class="font-semibold mt-4 mb-2">Add Participants to Rotation:</h5>
-                        <select id="availableMembersSelect" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm">
-                            <option value="">-- Select Paid & Active Member --</option>
-                            <!-- Options populated by JS -->
-                        </select>
-                        <button onclick="addParticipantToRotation()" class="mt-2 bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600">Add Selected Member</button>
-                        <p id="addParticipantMsg" class="text-center text-sm mt-2 hidden"></p>
-                    </div>
-                    <h5 class="font-semibold mt-4 mb-2">Current Participants in Rotation:</h5>
-                    <ul id="rotationParticipantsList" class="list-disc list-inside space-y-1">
-                        <!-- Participants will be loaded here by JavaScript -->
-                    </ul>
-                    <p id="noActiveParticipants" class="text-center text-gray-500 mt-4">No participants in rotation yet.</p>
-                </div>
-            </div>
+// New functions to show only one admin/leader panel at a time
+function showLeaderLoginOnly() {
+    console.log('FUNC: showLeaderLoginOnly called. Attempting to show Leader Login panel only...');
+    hideAllPanels();
+    document.getElementById('leaderLoginPanel').classList.remove('hidden');
+    console.log('FUNC: showLeaderLoginOnly completed. Leader Login panel should be visible.');
+}
 
-            <!-- Manage Users Tab Content -->
-            <div id="leaderUsers" class="tab-content hidden">
-                <h4 class="font-semibold text-lg mb-2">Manage All Users</h4>
-                <div class="overflow-x-auto">
-                    <table id="adminUsersTable" class="min-w-full bg-white border border-gray-200">
-                        <thead>
-                            <tr>
-                                <th class="py-2 px-4 border-b">Name</th>
-                                <th class="py-2 px-4 border-b">Email</th>
-                                <th class="py-2 px-4 border-b">Role</th>
-                                <th class="py-2 px-4 border-b">Payment Status</th>
-                                <th class="py-2 px-4 border-b">Account Status</th>
-                                <th class="py-2 px-4 border-b">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- User data will be loaded here by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-                <p id="noUsersFound" class="text-center text-gray-500 mt-4">No users found.</p>
-            </div>
+function showLeaderRegisterOnly() {
+    console.log('FUNC: showLeaderRegisterOnly called. Attempting to show Leader Register panel only...');
+    hideAllPanels();
+    document.getElementById('leaderRegisterPanel').classList.remove('hidden');
+    console.log('FUNC: showLeaderRegisterOnly completed. Leader Register panel should be visible.');
+}
 
-            <!-- Referral Code Tab Content -->
-            <div id="leaderReferral" class="tab-content hidden">
-                <h4 class="font-semibold text-lg mb-2">Generate Referral Code</h4>
-                <p class="mb-4">Generate a unique referral code for new members to use during sign up.</p>
-                <button onclick="generateReferralCode()" class="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Generate New Code</button>
-                <p id="generatedReferralCodeMsg" class="text-center text-sm mt-2 hidden"></p>
-                <p class="mt-4 text-lg font-bold text-center">Your Code: <span id="generatedReferralCode" class="text-green-600"></span></p>
-            </div>
+function showAdminLoginRegister() {
+    console.log('FUNC: showAdminLoginRegister called. Showing Leader Login by default.');
+    showLeaderLoginOnly(); // Default to showing leader login
+}
 
-            <button onclick="logoutLeader()" class="w-full bg-red-600 text-white p-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 mt-6">Logout Leader</button>
-        </div>
+function showCEOLogin() {
+    console.log('FUNC: showCEOLogin called. Attempting to show CEO Login panel only...');
+    hideAllPanels();
+    document.getElementById('ceoLoginPanel').classList.remove('hidden');
+    console.log('FUNC: showCEOLogin completed. CEO Login panel should be visible.');
+}
 
-        <!-- CEO Panel (hidden by default) -->
-        <div id="ceoPanel" class="panel hidden">
-            <h3 class="text-xl font-semibold mb-4 text-center">CEO Dashboard</h3>
-            <p class="text-center text-gray-700 mb-4">Welcome, CEO!</p>
+function showContactAdmin() {
+    console.log('FUNC: showContactAdmin called. Attempting to show Contact Admin panel only...');
+    hideAllPanels();
+    document.getElementById('contactAdminPanel').classList.remove('hidden');
+    console.log('FUNC: showContactAdmin completed. Contact Admin panel should be visible.');
+}
 
-            <!-- Tabs for CEO Dashboard -->
-            <div class="flex border-b border-gray-200 mb-4">
-                <button class="tab-button active-tab" onclick="openCEOTab(event, 'ceoRotationHistory')">Rotation History</button>
-                <button class="tab-button" onclick="openCEOTab(event, 'ceoAdminHistory')">Admin Activity</button>
-                <button class="tab-button" onclick="openCEOTab(event, 'ceoGeneralHistory')">General History</button>
-                <button class="tab-button" onclick="openCEOTab(event, 'ceoAddAdmin')">Add New Admin</button>
-            </div>
+// Function to get current user/admin token (simulated for frontend)
+// In a real app, this would get token from cookie or sessionStorage
+let currentAuthToken = localStorage.getItem('authToken');
+let currentUserData = JSON.parse(localStorage.getItem('currentUserData') || '{}'); // Stores role, name, email etc.
 
-            <!-- Rotation History Tab Content -->
-            <div id="ceoRotationHistory" class="tab-content">
-                <h4 class="font-semibold text-lg mb-2">Rotation History</h4>
-                <div class="overflow-x-auto">
-                    <table id="ceoRotationHistoryTable" class="min-w-full bg-white border border-gray-200">
-                        <thead>
-                            <tr>
-                                <th class="py-2 px-4 border-b">Day</th>
-                                <th class="py-2 px-4 border-b">Recipient</th>
-                                <th class="py-2 px-4 border-b">Daily Invest</th>
-                                <th class="py-2 px-4 border-b">Total Pool</th>
-                                <th class="py-2 px-4 border-b">Recipient Gain</th>
-                                <th class="py-2 px-4 border-b">Timestamp</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Rotation history will be loaded here by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-                <p id="noRotationHistory" class="text-center text-gray-500 mt-4">No rotation history available.</p>
-                <button onclick="exportTableToCSV('ceoRotationHistoryTable', 'rotation_history.csv')" class="mt-4 bg-green-500 text-white p-2 rounded-md hover:bg-green-600">Export to CSV</button>
-            </div>
+function saveAuthData(token, userData) {
+    console.log('FUNC: saveAuthData called. Saving token and user data to localStorage.');
+    currentAuthToken = token;
+    currentUserData = userData;
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('currentUserData', JSON.stringify(userData));
+}
 
-            <!-- Admin Activity History Tab Content -->
-            <div id="ceoAdminHistory" class="tab-content hidden">
-                <h4 class="font-semibold text-lg mb-2">Admin Activity History</h4>
-                <div class="overflow-x-auto">
-                    <table id="adminHistoryTable" class="min-w-full bg-white border border-gray-200">
-                        <thead>
-                            <tr>
-                                <th class="py-2 px-4 border-b">Timestamp</th>
-                                <th class="py-2 px-4 border-b">Type</th>
-                                <th class="py-2 px-4 border-b">Description</th>
-                                <th class="py-2 px-4 border-b">Details</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Admin history will be loaded here by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-                <p id="noAdminHistory" class="text-center text-gray-500 mt-4">No admin activity history available.</p>
-                <button onclick="exportTableToCSV('adminHistoryTable', 'admin_activity_history.csv')" class="mt-4 bg-green-500 text-white p-2 rounded-md hover:bg-green-600">Export to CSV</button>
-            </div>
+function clearAuthData() {
+    console.log('FUNC: clearAuthData called. Clearing token and user data from localStorage.');
+    currentAuthToken = null;
+    currentUserData = {};
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUserData');
+}
 
-            <!-- General History Tab Content (NEW) -->
-            <div id="ceoGeneralHistory" class="tab-content hidden">
-                <h4 class="font-semibold text-lg mb-2">General System History</h4>
-                <div class="overflow-x-auto">
-                    <table id="generalHistoryTable" class="min-w-full bg-white border border-gray-200">
-                        <thead>
-                            <tr>
-                                <th class="py-2 px-4 border-b">Timestamp</th>
-                                <th class="py-2 px-4 border-b">Type</th>
-                                <th class="py-2 px-4 border-b">Description</th>
-                                <th class="py-2 px-4 border-b">Details</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- General history will be loaded here by JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-                <p id="noGeneralHistory" class="text-center text-gray-500 mt-4">No general system history available.</p>
-                <button onclick="exportTableToCSV('generalHistoryTable', 'general_history.csv')" class="mt-4 bg-green-500 text-white p-2 rounded-md hover:bg-green-600">Export to CSV</button>
-            </div>
+// --- Panel Show Functions (Adjusted for Backend Data) ---
+async function showPaymentPanel(userEmail) {
+    console.log('FUNC: showPaymentPanel called for email:', userEmail);
+    hideAllPanels();
+    document.getElementById('paymentPanel').classList.remove('hidden');
+    document.getElementById('paymentPanel').dataset.currentUserEmail = userEmail;
 
+    try {
+        document.getElementById('paymentUserName').textContent = currentUserData.fullName || currentUserData.email;
+        console.log('Payment panel should be visible. Displaying user:', currentUserData.fullName || currentUserData.email);
+    } catch (error) {
+        console.error('ERROR: Error fetching user data for payment panel:', error);
+        document.getElementById('paymentUserName').textContent = 'User';
+    }
+}
 
-            <!-- Add New Admin Tab Content -->
-            <div id="ceoAddAdmin" class="tab-content hidden">
-                <h4 class="font-semibold text-lg mb-2">Add New Team Leader / Admin</h4>
-                <form id="newAdminForm" class="space-y-4">
-                    <div>
-                        <label for="newAdminFirstName" class="block text-sm font-medium text-gray-700">First Name</label>
-                        <input type="text" id="newAdminFirstName" name="newAdminFirstName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
-                    </div>
-                    <div>
-                        <label for="newAdminLastName" class="block text-sm font-medium text-gray-700">Last Name</label>
-                        <input type="text" id="newAdminLastName" name="newAdminLastName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
-                    </div>
-                    <div>
-                        <label for="newAdminPhoneNumber" class="block text-sm font-medium text-gray-700">Phone Number</label>
-                        <input type="tel" id="newAdminPhoneNumber" name="newAdminPhoneNumber" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
-                    </div>
-                    <div>
-                        <label for="newAdminEmail" class="block text-sm font-medium text-gray-700">Email</label>
-                        <input type="email" id="newAdminEmail" name="newAdminEmail" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
-                    </div>
-                    <div>
-                        <label for="newAdminPass" class="block text-sm font-medium text-gray-700">Password</label>
-                        <input type="password" id="newAdminPass" name="newAdminPass" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" required>
-                    </div>
-                    <button type="button" onclick="addAdmin()" class="w-full bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">Add Admin</button>
-                    <p id="newAdminMsg" class="text-center text-sm mt-2 hidden"></p>
-                </form>
-            </div>
+async function showMainPlatform(userName, userInvest, userGain, userReferralCode) {
+    console.log('FUNC: showMainPlatform called for user:', userName);
+    hideAllPanels();
+    document.getElementById('mainPlatformPanel').classList.remove('hidden');
+    document.getElementById('loggedInUserName').textContent = userName;
 
-            <button onclick="logoutCEO()" class="w-full bg-red-600 text-white p-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 mt-6">Logout CEO</button>
-        </div>
+    const adminAreaNote = document.getElementById('adminAreaNote');
+    const participantFinancials = document.getElementById('participantFinancials');
 
-        <!-- Contact Admin Panel (hidden by default) -->
-        <div id="contactAdminPanel" class="panel hidden">
-            <h3 class="text-xl font-semibold mb-4 text-center">Contact Admin</h3>
-            <p class="text-center text-gray-700 mb-4">If you have any issues or questions, please fill out the form below.</p>
-            <form id="contactAdminForm" class="space-y-4">
-                <div>
-                    <label for="contactEmail" class="block text-sm font-medium text-gray-700">Your Email</label>
-                    <input type="email" id="contactEmail" name="contactEmail" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="contactSubject" class="block text-sm font-medium text-gray-700">Subject</label>
-                    <input type="text" id="contactSubject" name="contactSubject" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="contactMessage" class="block text-sm font-medium text-gray-700">Message</label>
-                    <textarea id="contactMessage" name="contactMessage" rows="4" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required></textarea>
-                </div>
-                <button type="submit" class="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Send Message</button>
-                <p id="contactAdminMsg" class="text-center text-sm mt-2 hidden"></p>
-            </form>
-            <p class="text-center text-sm mt-4"><a href="#" onclick="showLogin()" class="text-indigo-600 hover:underline">Back to Login</a></p>
-        </div>
+    // Only show financial details for regular users
+    if (currentUserData.role === 'user') {
+        adminAreaNote.textContent = ''; // Clear any previous text
+        participantFinancials.classList.remove('hidden'); // Ensure it's visible for users
+        document.getElementById('participantInvest').textContent = userInvest !== undefined ? userInvest.toFixed(2) : '0.00';
+        document.getElementById('participantGain').textContent = userGain !== undefined ? userGain.toFixed(2) : '0.00';
+        document.getElementById('participantReferralCode').textContent = userReferralCode || 'N/A';
+    } else if (currentUserData.role === 'leader') {
+        adminAreaNote.textContent = 'You have Team Leader access. Check the "Team Leader Dashboard" section.';
+        participantFinancials.classList.add('hidden'); // Hide for leaders
+    } else if (currentUserData.role === 'ceo') {
+        adminAreaNote.textContent = 'You have CEO access. Check the "CEO Dashboard" section.';
+        participantFinancials.classList.add('hidden'); // Hide for CEO
+    } else {
+        adminAreaNote.textContent = 'Your role is not specified.';
+        participantFinancials.classList.add('hidden'); // Hide for unknown roles
+    }
+    console.log('FUNC: showMainPlatform completed. Main platform should be visible.');
+}
 
-    </div>
+// --- Authentication and API Call Functions ---
 
-    <!-- Tab Script for Leader/CEO Dashboards -->
-    <script>
-        function openLeaderTab(evt, tabName) {
-            var i, tabcontent, tablinks;
-            tabcontent = document.getElementsByClassName("tab-content");
-            for (i = 0; i < tabcontent.length; i++) {
-                tabcontent[i].classList.add("hidden");
-            }
-            tablinks = document.getElementsByClassName("tab-button");
-            for (i = 0; i < tablinks.length; i++) {
-                tablinks[i].classList.remove("active-tab");
-            }
-            document.getElementById(tabName).classList.remove("hidden");
-            evt.currentTarget.classList.add("active-tab");
+// Handle Sign Up Form Submission
+document.getElementById('signUpForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    console.log('Sign Up form submitted.');
 
-            // Trigger data fetch for the newly opened tab
-            if (tabName === 'leaderPayments') {
-                fetchPendingPayments();
-            } else if (tabName === 'leaderMessages') {
-                fetchUserMessages();
-            } else if (tabName === 'leaderRotation') {
-                fetchRotationData();
-            } else if (tabName === 'leaderUsers') {
-                fetchAllUsersForAdmin();
-            } else if (tabName === 'leaderReferral') {
-                // No specific fetch needed, but ensure UI is ready
-            }
-        }
+    const firstName = document.getElementById('firstName').value;
+    const lastName = document.getElementById('lastName').value;
+    const phoneNumber = document.getElementById('phoneNumber').value;
+    const email = document.getElementById('email').value; // This will be 'username' for backend
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    const referralCode = document.getElementById('referralCode').value;
+    const signUpMsg = document.getElementById('signUpMsg');
 
-        function openCEOTab(evt, tabName) {
-            var i, tabcontent, tablinks;
-            tabcontent = document.getElementsByClassName("tab-content");
-            for (i = 0; i < tabcontent.length; i++) {
-                tabcontent[i].classList.add("hidden");
-            }
-            tablinks = document.getElementsByClassName("tab-button");
-            for (i = 0; i < tablinks.length; i++) {
-                tablinks[i].classList.remove("active-tab");
-            }
-            document.getElementById(tabName).classList.remove("hidden");
-            evt.currentTarget.classList.add("active-tab");
+    signUpMsg.classList.add('hidden'); // Hide previous messages
 
-            // Trigger data fetch for the newly opened tab
-            if (tabName === 'ceoRotationHistory') {
-                fetchCEORotationHistory();
-            } else if (tabName === 'ceoAdminHistory') {
-                fetchAdminHistory();
-            } else if (tabName === 'ceoGeneralHistory') {
-                fetchGeneralHistory();
-            } else if (tabName === 'ceoAddAdmin') {
-                // No specific fetch needed for this tab, it's a form
-            }
-        }
+    if (password !== confirmPassword) {
+        signUpMsg.textContent = 'Passwords do not match!';
+        signUpMsg.classList.remove('hidden');
+        signUpMsg.classList.remove('success-msg');
+        signUpMsg.classList.add('error-msg');
+        return;
+    }
 
-        // Initialize first tab as active on load for Leader/CEO panels
-        document.addEventListener('DOMContentLoaded', () => {
-            const leaderPanel = document.getElementById('leaderPanel');
-            const ceoPanel = document.getElementById('ceoPanel');
-
-            if (!leaderPanel.classList.contains('hidden')) {
-                const firstLeaderTabButton = leaderPanel.querySelector('.tab-button');
-                if (firstLeaderTabButton) {
-                    firstLeaderTabButton.click(); // Simulate click to activate and fetch data
-                }
-            } else if (!ceoPanel.classList.contains('hidden')) {
-                const firstCEOTabButton = ceoPanel.querySelector('.tab-button');
-                if (firstCEOTabButton) {
-                    firstCEOTabButton.click(); // Simulate click to activate and fetch data
-                }
-            }
+    try {
+        const response = await fetch(`${API_BASE_URL}/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                // Backend expects 'username' and 'password'
+                username: email, // Mapping email input to backend's 'username'
+                password: password,
+                firstName,
+                lastName,
+                phoneNumber,
+                referralCode
+            })
         });
-    </script>
-    <!-- Link to your JavaScript file -->
-    <script src="script.js"></script>
-</body>
-</html>
+
+        const data = await response.json();
+        signUpMsg.textContent = data.message;
+        signUpMsg.classList.remove('hidden');
+
+        if (response.ok) {
+            signUpMsg.classList.remove('error-msg');
+            signUpMsg.classList.add('success-msg');
+            displayTempMessage('Registration successful! Please log in.', true);
+            // Simulate verification and show login panel
+            setTimeout(() => showVerificationMessage(email), 1000);
+        } else {
+            signUpMsg.classList.remove('success-msg');
+            signUpMsg.classList.add('error-msg');
+            displayTempMessage(`Registration failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error during sign up:', error);
+        signUpMsg.textContent = 'Network error. Please try again.';
+        signUpMsg.classList.remove('hidden');
+        signUpMsg.classList.remove('success-msg');
+        signUpMsg.classList.add('error-msg');
+        displayTempMessage('Network error during sign up.', false);
+    }
+});
+
+// Handle Login Form Submission
+document.getElementById('loginForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    console.log('Login form submitted.');
+
+    const email = document.getElementById('loginEmail').value; // This will be 'username' for backend
+    const password = document.getElementById('loginPassword').value;
+    const loginMsg = document.getElementById('loginMsg');
+
+    loginMsg.classList.add('hidden'); // Hide previous messages
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                // Backend expects 'username' and 'password'
+                username: email, // Mapping loginEmail input to backend's 'username'
+                password: password
+            })
+        });
+
+        const data = await response.json();
+        loginMsg.textContent = data.message;
+        loginMsg.classList.remove('hidden');
+
+        if (response.ok) {
+            loginMsg.classList.remove('error-msg');
+            loginMsg.classList.add('success-msg');
+            displayTempMessage('Login successful!', true);
+
+            // Save authentication token and user data
+            saveAuthData(data.token, { email: email, role: data.role || 'user', fullName: data.fullName || email }); // Assuming backend returns role and full name
+
+            // Simulate payment status check (in real app, this would be from backend)
+            const isPaid = false; // Simulate user is not paid yet
+            if (!isPaid) {
+                showPaymentPanel(email);
+            } else {
+                // If paid, show main platform directly
+                showMainPlatform(data.fullName || email, data.invest, data.gain, data.referralCode);
+            }
+
+        } else {
+            loginMsg.classList.remove('success-msg');
+            loginMsg.classList.add('error-msg');
+            displayTempMessage(`Login failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error during login:', error);
+        loginMsg.textContent = 'Network error. Please try again.';
+        loginMsg.classList.remove('hidden');
+        loginMsg.classList.remove('success-msg');
+        loginMsg.classList.add('error-msg');
+        displayTempMessage('Network error during login.', false);
+    }
+});
+
+// --- Other Form Submission Handlers (Add your backend calls here) ---
+
+// Handle Payment Form Submission
+document.getElementById('paymentForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    console.log('Payment form submitted.');
+
+    const paymentMethod = document.getElementById('paymentMethod').value;
+    const currentUserEmail = document.getElementById('paymentPanel').dataset.currentUserEmail;
+    const paymentMsg = document.getElementById('paymentMsg');
+
+    paymentMsg.classList.add('hidden');
+
+    // In a real app, you'd send payment details to your backend
+    try {
+        const response = await fetch(`${API_BASE_URL}/submit-payment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}` // Send token for authentication
+            },
+            body: JSON.stringify({
+                email: currentUserEmail,
+                method: paymentMethod,
+                // Include other payment details if applicable (e.g., card info)
+            })
+        });
+
+        const data = await response.json();
+        paymentMsg.textContent = data.message;
+        paymentMsg.classList.remove('hidden');
+
+        if (response.ok) {
+            paymentMsg.classList.remove('error-msg');
+            paymentMsg.classList.add('success-msg');
+            displayTempMessage('Payment info submitted! Awaiting validation.', true);
+            // Simulate payment validation and show main platform after a delay
+            setTimeout(() => {
+                // In a real app, backend would update user status to 'paid'
+                currentUserData.isPaid = true; // Update local state
+                saveAuthData(currentAuthToken, currentUserData); // Save updated user data
+                showMainPlatform(currentUserData.fullName || currentUserData.email, 0, 0, currentUserData.referralCode); // Show main platform
+            }, 2000); // Simulate payment processing time
+        } else {
+            paymentMsg.classList.remove('success-msg');
+            paymentMsg.classList.add('error-msg');
+            displayTempMessage(`Payment submission failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error submitting payment:', error);
+        paymentMsg.textContent = 'Network error. Please try again.';
+        paymentMsg.classList.remove('hidden');
+        paymentMsg.classList.remove('success-msg');
+        paymentMsg.classList.add('error-msg');
+        displayTempMessage('Network error during payment submission.', false);
+    }
+});
+
+
+// Handle Contact Admin Form Submission
+document.getElementById('contactAdminForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    console.log('Contact Admin form submitted.');
+
+    const contactEmail = document.getElementById('contactEmail').value;
+    const contactSubject = document.getElementById('contactSubject').value;
+    const contactMessage = document.getElementById('contactMessage').value;
+    const contactAdminMsg = document.getElementById('contactAdminMsg');
+
+    contactAdminMsg.classList.add('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/contact-admin`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: contactEmail,
+                subject: contactSubject,
+                message: contactMessage
+            })
+        });
+
+        const data = await response.json();
+        contactAdminMsg.textContent = data.message;
+        contactAdminMsg.classList.remove('hidden');
+
+        if (response.ok) {
+            contactAdminMsg.classList.remove('error-msg');
+            contactAdminMsg.classList.add('success-msg');
+            displayTempMessage('Message sent successfully!', true);
+            document.getElementById('contactAdminForm').reset(); // Clear form
+        } else {
+            contactAdminMsg.classList.remove('success-msg');
+            contactAdminMsg.classList.add('error-msg');
+            displayTempMessage(`Failed to send message: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error sending contact message:', error);
+        contactAdminMsg.textContent = 'Network error. Please try again.';
+        contactAdminMsg.classList.remove('hidden');
+        contactAdminMsg.classList.remove('success-msg');
+        contactAdminMsg.classList.add('error-msg');
+        displayTempMessage('Network error sending message.', false);
+    }
+});
+
+
+// Handle Leader Login Form Submission
+document.getElementById('leaderLoginForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    console.log('Leader Login form submitted.');
+
+    const email = document.getElementById('loginLeaderEmail').value;
+    const password = document.getElementById('loginLeaderPass').value;
+    const leaderLoginMsg = document.getElementById('leaderLoginMsg');
+
+    leaderLoginMsg.classList.add('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/leader-login`, { // Assuming you'll add this endpoint
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username: email, password: password })
+        });
+
+        const data = await response.json();
+        leaderLoginMsg.textContent = data.message;
+        leaderLoginMsg.classList.remove('hidden');
+
+        if (response.ok) {
+            leaderLoginMsg.classList.remove('error-msg');
+            leaderLoginMsg.classList.add('success-msg');
+            displayTempMessage('Leader login successful!', true);
+            saveAuthData(data.token, { email: email, role: 'leader', fullName: data.fullName || email });
+            showLeaderDashboard(data.fullName || email); // Function to show leader dashboard
+        } else {
+            leaderLoginMsg.classList.remove('success-msg');
+            leaderLoginMsg.classList.add('error-msg');
+            displayTempMessage(`Leader login failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error during leader login:', error);
+        leaderLoginMsg.textContent = 'Network error. Please try again.';
+        leaderLoginMsg.classList.remove('hidden');
+        leaderLoginMsg.classList.remove('success-msg');
+        leaderLoginMsg.classList.add('error-msg');
+        displayTempMessage('Network error during leader login.', false);
+    }
+});
+
+// Handle CEO Login Form Submission
+document.getElementById('ceoLoginForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    console.log('CEO Login form submitted.');
+
+    const email = document.getElementById('ceoLoginEmail').value;
+    const password = document.getElementById('ceoLoginPassword').value;
+    const ceoLoginMsg = document.getElementById('ceoLoginMsg');
+
+    ceoLoginMsg.classList.add('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/ceo-login`, { // Assuming you'll add this endpoint
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username: email, password: password })
+        });
+
+        const data = await response.json();
+        ceoLoginMsg.textContent = data.message;
+        ceoLoginMsg.classList.remove('hidden');
+
+        if (response.ok) {
+            ceoLoginMsg.classList.remove('error-msg');
+            ceoLoginMsg.classList.add('success-msg');
+            displayTempMessage('CEO login successful!', true);
+            saveAuthData(data.token, { email: email, role: 'ceo', fullName: data.fullName || email });
+            showCEODashboard(); // Function to show CEO dashboard
+        } else {
+            ceoLoginMsg.classList.remove('success-msg');
+            ceoLoginMsg.classList.add('error-msg');
+            displayTempMessage(`CEO login failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error during CEO login:', error);
+        ceoLoginMsg.textContent = 'Network error. Please try again.';
+        ceoLoginMsg.classList.remove('hidden');
+        ceoLoginMsg.classList.remove('success-msg');
+        ceoLoginMsg.classList.add('error-msg');
+        displayTempMessage('Network error during CEO login.', false);
+    }
+});
+
+
+// --- Logout Functions ---
+function logoutUser() {
+    console.log('FUNC: logoutUser called. Logging out user.');
+    clearAuthData();
+    displayTempMessage('Logged out successfully!', true);
+    showLogin(); // Go back to login page
+}
+
+function logoutLeader() {
+    console.log('FUNC: logoutLeader called. Logging out leader.');
+    clearAuthData();
+    displayTempMessage('Leader logged out successfully!', true);
+    showLogin(); // Go back to login page
+}
+
+function logoutCEO() {
+    console.log('FUNC: logoutCEO called. Logging out CEO.');
+    clearAuthData();
+    displayTempMessage('CEO logged out successfully!', true);
+    showLogin(); // Go back to login page
+}
+
+// --- Dummy Functions for Dashboard Features (You'll implement these with backend calls) ---
+function showPaymentInstructions(method) {
+    console.log('FUNC: showPaymentInstructions called for method:', method);
+    const instructionsDiv = document.getElementById('paymentInstructions');
+    const allInfos = instructionsDiv.querySelectorAll('div');
+    allInfos.forEach(div => div.classList.add('hidden')); // Hide all instructions
+
+    if (method) {
+        document.getElementById(`${method}Info`).classList.remove('hidden');
+        instructionsDiv.style.display = 'block'; // Show the overall instructions div
+    } else {
+        instructionsDiv.style.display = 'none'; // Hide if no method selected
+    }
+}
+
+function showLeaderDashboard(leaderName) {
+    console.log('FUNC: showLeaderDashboard called for leader:', leaderName);
+    hideAllPanels();
+    document.getElementById('leaderPanel').classList.remove('hidden');
+    document.getElementById('leaderNameDisplay').textContent = leaderName;
+    // In a real app, fetch pending payments, user messages, rotation data etc.
+    fetchPendingPayments();
+    fetchUserMessages();
+    fetchRotationData();
+    fetchAllUsersForAdmin();
+    // No need to call generateReferralCode here unless you want it to auto-generate on load
+}
+
+function showCEODashboard() {
+    console.log('FUNC: showCEODashboard called.');
+    hideAllPanels();
+    document.getElementById('ceoPanel').classList.remove('hidden');
+    // In a real app, fetch CEO-specific data like rotation history, system activity
+    fetchCEORotationHistory();
+    fetchAdminHistory();
+}
+
+// Dummy fetch functions for leader/CEO dashboards
+async function fetchPendingPayments() {
+    console.log('Fetching pending payments (simulated)...');
+    const list = document.getElementById('pendingPaymentsList');
+    list.innerHTML = '';
+    document.getElementById('noPendingPayments').classList.remove('hidden'); // Assume no data initially
+
+    // In a real app, make an API call to /api/leader/pending-payments
+    // const response = await fetch(`${API_BASE_URL}/leader/pending-payments`, { headers: { 'Authorization': `Bearer ${currentAuthToken}` } });
+    // const payments = await response.json();
+    const payments = [
+        // { id: 'p1', userName: 'Alice Smith', amount: 25, method: 'Cash', status: 'Pending' },
+        // { id: 'p2', userName: 'Bob Johnson', amount: 25, method: 'MonCash', status: 'Pending' }
+    ]; // Simulated data
+
+    if (payments.length > 0) {
+        document.getElementById('noPendingPayments').classList.add('hidden');
+        payments.forEach(p => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <span>${p.userName} - $${p.amount.toFixed(2)} (${p.method}) - Status: <span class="status-unpaid">${p.status}</span></span>
+                <button onclick="validatePayment('${p.id}')">Validate</button>
+            `;
+            list.appendChild(li);
+        });
+    }
+}
+
+async function validatePayment(paymentId) {
+    console.log(`Validating payment ${paymentId} (simulated)...`);
+    displayTempMessage(`Payment ${paymentId} validated! (Simulated)`, true);
+    // In a real app, send API call to /api/leader/validate-payment
+    fetchPendingPayments(); // Refresh list
+    fetchAllUsersForAdmin(); // Refresh user list as status might change
+}
+
+async function fetchUserMessages() {
+    console.log('Fetching user messages (simulated)...');
+    const list = document.getElementById('userMessagesList');
+    list.innerHTML = '';
+    document.getElementById('noUserMessages').classList.remove('hidden');
+
+    // In a real app, make an API call to /api/leader/messages
+    // const response = await fetch(`${API_BASE_URL}/leader/messages`, { headers: { 'Authorization': `Bearer ${currentAuthToken}` } });
+    // const messages = await response.json();
+    const messages = [
+        // { id: 'm1', sender: 'user@example.com', subject: 'Payment Issue', message: 'My payment is stuck.', read: false },
+        // { id: 'm2', sender: 'another@example.com', subject: 'Question', message: 'How does rotation work?', read: true }
+    ]; // Simulated data
+
+    if (messages.length > 0) {
+        document.getElementById('noUserMessages').classList.add('hidden');
+        messages.forEach(msg => {
+            const li = document.createElement('li');
+            li.classList.add(msg.read ? 'read' : 'unread');
+            li.innerHTML = `
+                <strong>From: ${msg.sender}</strong><br>
+                Subject: ${msg.subject}<br>
+                Message: ${msg.message}
+                ${!msg.read ? `<button onclick="markMessageRead('${msg.id}')">Mark as Read</button>` : ''}
+            `;
+            list.appendChild(li);
+        });
+    }
+}
+
+async function markMessageRead(messageId) {
+    console.log(`Marking message ${messageId} as read (simulated)...`);
+    displayTempMessage(`Message ${messageId} marked as read! (Simulated)`, true);
+    // In a real app, send API call to /api/leader/messages/${messageId}/read
+    fetchUserMessages(); // Refresh list
+}
+
+// Dummy data for rotation (will be replaced by backend data)
+let rotationParticipants = []; // Stores user IDs or objects
+let currentRotationDay = 0;
+let currentRecipientIndex = -1;
+let dailyInvestmentAmount = 10; // Default
+
+async function fetchRotationData() {
+    console.log('Fetching rotation data (simulated)...');
+    // In a real app, fetch from backend: /api/rotation/settings, /api/rotation/participants
+    // For now, use dummy data or load from localStorage if available
+    const storedRotation = JSON.parse(localStorage.getItem('rotationData') || '{}');
+    rotationParticipants = storedRotation.participants || [];
+    currentRotationDay = storedRotation.currentDay || 0;
+    currentRecipientIndex = storedRotation.currentRecipientIndex !== undefined ? storedRotation.currentRecipientIndex : -1;
+    dailyInvestmentAmount = storedRotation.dailyInvestmentAmount || 10;
+
+    document.getElementById('currentRotationDay').textContent = currentRotationDay;
+    document.getElementById('dailyInvest').value = dailyInvestmentAmount;
+    updateRotationParticipantsList();
+    updateCurrentRecipientDisplay();
+
+    // Populate available members for rotation (simulated: all active/paid users)
+    const select = document.getElementById('availableMembersSelect');
+    select.innerHTML = '<option value="">-- Select Paid & Active Member --</option>';
+    // In real app: fetch active and paid users from backend
+    // const usersResponse = await fetch(`${API_BASE_URL}/admin/users?status=active&paid=true`);
+    // const activePaidUsers = await usersResponse.json();
+    const activePaidUsers = [
+        // { id: 'u1', username: 'user1@example.com', fullName: 'User One', isPaid: true, isActive: true },
+        // { id: 'u2', username: 'user2@example.com', fullName: 'User Two', isPaid: true, isActive: true },
+    ]; // Simulated users
+
+    activePaidUsers.forEach(user => {
+        if (!rotationParticipants.some(p => p.id === user.id)) { // Don't add if already in rotation
+            const option = document.createElement('option');
+            option.value = user.id;
+            option.textContent = user.fullName || user.username;
+            select.appendChild(option);
+        }
+    });
+}
+
+function updateRotationParticipantsList() {
+    const list = document.getElementById('rotationParticipantsList');
+    list.innerHTML = '';
+    if (rotationParticipants.length === 0) {
+        document.getElementById('noActiveParticipants').classList.remove('hidden');
+    } else {
+        document.getElementById('noActiveParticipants').classList.add('hidden');
+        rotationParticipants.forEach((p, index) => {
+            const li = document.createElement('li');
+            li.textContent = p.fullName || p.username;
+            if (index === currentRecipientIndex) {
+                li.classList.add('current-recipient');
+            }
+            list.appendChild(li);
+        });
+    }
+}
+
+function updateCurrentRecipientDisplay() {
+    const display = document.getElementById('currentRecipientDisplay');
+    if (rotationParticipants.length > 0 && currentRecipientIndex !== -1) {
+        const recipient = rotationParticipants[currentRecipientIndex];
+        display.textContent = recipient.fullName || recipient.username;
+    } else {
+        display.textContent = 'N/A';
+    }
+}
+
+function saveRotationSettings() {
+    dailyInvestmentAmount = parseFloat(document.getElementById('dailyInvest').value);
+    if (isNaN(dailyInvestmentAmount) || dailyInvestmentAmount <= 0) {
+        displayTempMessage('Investment must be a positive number.', false);
+        return;
+    }
+    localStorage.setItem('rotationData', JSON.stringify({
+        participants: rotationParticipants,
+        currentDay: currentRotationDay,
+        currentRecipientIndex: currentRecipientIndex,
+        dailyInvestmentAmount: dailyInvestmentAmount
+    }));
+    displayTempMessage('Rotation settings updated!', true);
+    // In a real app, send to backend: /api/rotation/settings (PUT)
+}
+
+function addParticipantToRotation() {
+    const select = document.getElementById('availableMembersSelect');
+    const selectedUserId = select.value;
+    const selectedUserName = select.options[select.selectedIndex].textContent;
+    const addParticipantMsg = document.getElementById('addParticipantMsg');
+    addParticipantMsg.classList.add('hidden');
+
+    if (!selectedUserId) {
+        addParticipantMsg.textContent = 'Please select a member to add.';
+        addParticipantMsg.classList.remove('hidden');
+        addParticipantMsg.classList.add('error-msg');
+        return;
+    }
+
+    const newParticipant = { id: selectedUserId, username: selectedUserName, fullName: selectedUserName }; // Simplified
+    if (!rotationParticipants.some(p => p.id === newParticipant.id)) {
+        rotationParticipants.push(newParticipant);
+        localStorage.setItem('rotationData', JSON.stringify({
+            participants: rotationParticipants,
+            currentDay: currentRotationDay,
+            currentRecipientIndex: currentRecipientIndex,
+            dailyInvestmentAmount: dailyInvestmentAmount
+        }));
+        updateRotationParticipantsList();
+        displayTempMessage(`${selectedUserName} added to rotation!`, true);
+        addParticipantMsg.classList.remove('error-msg');
+        addParticipantMsg.classList.add('success-msg');
+        addParticipantMsg.textContent = `${selectedUserName} added to rotation!`;
+        select.value = ''; // Clear selection
+        // In a real app, send to backend: /api/rotation/participants (POST)
+    } else {
+        addParticipantMsg.textContent = 'Participant is already in the rotation.';
+        addParticipantMsg.classList.remove('hidden');
+        addParticipantMsg.classList.add('error-msg');
+    }
+}
+
+function nextParticipant() {
+    const rotationStatusMsg = document.getElementById('rotationStatusMsg');
+    rotationStatusMsg.classList.add('hidden');
+
+    if (rotationParticipants.length === 0) {
+        rotationStatusMsg.textContent = 'No participants in rotation to advance.';
+        rotationStatusMsg.classList.remove('hidden');
+        rotationStatusMsg.classList.add('error-msg');
+        displayTempMessage('No participants in rotation.', false);
+        return;
+    }
+
+    currentRotationDay++;
+    currentRecipientIndex = (currentRecipientIndex + 1) % rotationParticipants.length;
+    const currentRecipient = rotationParticipants[currentRecipientIndex];
+
+    // Calculate gain (simplified: total pool = participants * daily investment)
+    const totalPool = rotationParticipants.length * dailyInvestmentAmount;
+    const recipientGain = totalPool; // For simplicity, recipient gets the whole pool
+
+    displayTempMessage(`Day ${currentRotationDay}: ${currentRecipient.fullName || currentRecipient.username} receives $${recipientGain.toFixed(2)}!`, true);
+
+    // Save history (simulated)
+    let history = JSON.parse(localStorage.getItem('ceoRotationHistory') || '[]');
+    history.push({
+        day: currentRotationDay,
+        recipient: currentRecipient.fullName || currentRecipient.username,
+        invest: dailyInvestmentAmount,
+        totalPool: totalPool,
+        gain: recipientGain,
+        timestamp: new Date().toLocaleString()
+    });
+    // Keep only last 25 entries
+    if (history.length > 25) {
+        history = history.slice(history.length - 25);
+    }
+    localStorage.setItem('ceoRotationHistory', JSON.stringify(history));
+
+
+    localStorage.setItem('rotationData', JSON.stringify({
+        participants: rotationParticipants,
+        currentDay: currentRotationDay,
+        currentRecipientIndex: currentRecipientIndex,
+        dailyInvestmentAmount: dailyInvestmentAmount
+    }));
+
+    document.getElementById('currentRotationDay').textContent = currentRotationDay;
+    updateCurrentRecipientDisplay();
+    updateRotationParticipantsList(); // Update highlight
+    fetchCEORotationHistory(); // Refresh CEO history table
+
+    // In a real app, send to backend: /api/rotation/next (POST)
+}
+
+
+// Dummy data for user management
+let allUsers = []; // Stores all registered users (simulated)
+
+async function fetchAllUsersForAdmin() {
+    console.log('Fetching all users for admin (simulated)...');
+    const tableBody = document.getElementById('adminUsersTable').querySelector('tbody');
+    tableBody.innerHTML = '';
+    document.getElementById('noUsersFound').classList.remove('hidden');
+
+    // In a real app, fetch from backend: /api/admin/users
+    // const response = await fetch(`${API_BASE_URL}/admin/users`, { headers: { 'Authorization': `Bearer ${currentAuthToken}` } });
+    // allUsers = await response.json();
+    allUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]'); // Load from simulated storage
+
+    if (allUsers.length > 0) {
+        document.getElementById('noUsersFound').classList.add('hidden');
+        allUsers.forEach(user => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${user.fullName || user.username}</td>
+                <td>${user.username}</td>
+                <td>${user.role || 'user'}</td>
+                <td><span class="${user.isPaid ? 'status-paid' : 'status-unpaid'}">${user.isPaid ? 'Paid' : 'Unpaid'}</span></td>
+                <td><span class="${user.isActive ? 'status-active' : 'status-inactive'}">${user.isActive ? 'Active' : 'Inactive'}</span></td>
+                <td>
+                    <button onclick="toggleUserStatus('${user.id}', ${user.isActive})">${user.isActive ? 'Deactivate' : 'Activate'}</button>
+                    <button onclick="toggleUserPaymentStatus('${user.id}', ${user.isPaid})">${user.isPaid ? 'Mark Unpaid' : 'Mark Paid'}</button>
+                    <button style="background-color: #dc3545;" onclick="deleteUser('${user.id}')">Delete</button>
+                </td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    }
+}
+
+async function toggleUserStatus(userId, currentStatus) {
+    console.log(`Toggling status for user ${userId} to ${!currentStatus} (simulated)...`);
+    const userIndex = allUsers.findIndex(u => u.id === userId);
+    if (userIndex > -1) {
+        allUsers[userIndex].isActive = !currentStatus;
+        localStorage.setItem('registeredUsers', JSON.stringify(allUsers));
+        displayTempMessage(`User status updated to ${allUsers[userIndex].isActive ? 'Active' : 'Inactive'}!`, true);
+        fetchAllUsersForAdmin(); // Refresh table
+        // In a real app, send to backend: /api/admin/users/${userId}/status (PUT)
+    }
+}
+
+async function toggleUserPaymentStatus(userId, currentPaidStatus) {
+    console.log(`Toggling payment status for user ${userId} to ${!currentPaidStatus} (simulated)...`);
+    const userIndex = allUsers.findIndex(u => u.id === userId);
+    if (userIndex > -1) {
+        allUsers[userIndex].isPaid = !currentPaidStatus;
+        localStorage.setItem('registeredUsers', JSON.stringify(allUsers));
+        displayTempMessage(`User payment status updated to ${allUsers[userIndex].isPaid ? 'Paid' : 'Unpaid'}!`, true);
+        fetchAllUsersForAdmin(); // Refresh table
+        // In a real app, send to backend: /api/admin/users/${userId}/payment-status (PUT)
+    }
+}
+
+async function deleteUser(userId) {
+    console.log(`Deleting user ${userId} (simulated)...`);
+    if (confirm('Are you sure you want to delete this user?')) { // Using confirm for demo, replace with custom modal
+        allUsers = allUsers.filter(u => u.id !== userId);
+        localStorage.setItem('registeredUsers', JSON.stringify(allUsers));
+        displayTempMessage('User deleted successfully! (Simulated)', true);
+        fetchAllUsersForAdmin(); // Refresh table
+        // In a real app, send to backend: /api/admin/users/${userId} (DELETE)
+    }
+}
+
+// Referral Code Generator
+function generateReferralCode() {
+    const code = Math.random().toString(36).substring(2, 10).toUpperCase(); // Simple random code
+    document.getElementById('generatedReferralCode').textContent = code;
+    document.getElementById('generatedReferralCodeMsg').textContent = 'New referral code generated!';
+    document.getElementById('generatedReferralCodeMsg').classList.remove('hidden', 'error-msg');
+    document.getElementById('generatedReferralCodeMsg').classList.add('success-msg');
+    displayTempMessage('New referral code generated!', true);
+    // In a real app, send to backend: /api/admin/generate-referral-code (POST)
+    // and store it, maybe link to a leader
+}
+
+// CEO Dashboard Functions
+async function fetchCEORotationHistory() {
+    console.log('Fetching CEO rotation history (simulated)...');
+    const tableBody = document.getElementById('ceoRotationHistoryTable').querySelector('tbody');
+    tableBody.innerHTML = '';
+    document.getElementById('noRotationHistory').classList.remove('hidden');
+
+    const history = JSON.parse(localStorage.getItem('ceoRotationHistory') || '[]');
+
+    if (history.length > 0) {
+        document.getElementById('noRotationHistory').classList.add('hidden');
+        history.forEach(entry => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${entry.day}</td>
+                <td>${entry.recipient}</td>
+                <td>$${entry.invest.toFixed(2)}</td>
+                <td>$${entry.totalPool.toFixed(2)}</td>
+                <td>$${entry.gain.toFixed(2)}</td>
+                <td>${entry.timestamp}</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    }
+}
+
+async function fetchAdminHistory() {
+    console.log('Fetching admin activity history (simulated)...');
+    const tableBody = document.getElementById('adminHistoryTable').querySelector('tbody');
+    tableBody.innerHTML = '';
+    document.getElementById('noAdminHistory').classList.remove('hidden');
+
+    // In a real app, fetch from backend: /api/ceo/activity-history
+    const history = [
+        // { timestamp: '2025-07-15 10:00:00', type: 'User Registered', description: 'New user Alice created account', details: 'Email: alice@example.com' },
+        // { timestamp: '2025-07-15 10:30:00', type: 'Payment Validated', description: 'Payment for Bob validated by Leader X', details: 'Amount: $25, Method: Cash' },
+    ]; // Simulated data
+
+    if (history.length > 0) {
+        document.getElementById('noAdminHistory').classList.add('hidden');
+        history.forEach(entry => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${entry.timestamp}</td>
+                <td>${entry.type}</td>
+                <td>${entry.description}</td>
+                <td>${entry.details}</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    }
+}
+
+async function addAdmin() {
+    console.log('Adding new admin (simulated)...');
+    const firstName = document.getElementById('newAdminFirstName').value;
+    const lastName = document.getElementById('newAdminLastName').value;
+    const phoneNumber = document.getElementById('newAdminPhoneNumber').value;
+    const email = document.getElementById('newAdminEmail').value;
+    const password = document.getElementById('newAdminPass').value;
+    const newAdminMsg = document.getElementById('newAdminMsg');
+
+    newAdminMsg.classList.add('hidden');
+
+    if (!email || !password || !firstName || !lastName) {
+        newAdminMsg.textContent = 'All fields are required to add a new admin.';
+        newAdminMsg.classList.remove('hidden');
+        newAdminMsg.classList.add('error-msg');
+        return;
+    }
+
+    // In a real app, send to backend: /api/ceo/add-admin (POST)
+    try {
+        const response = await fetch(`${API_BASE_URL}/ceo/add-admin`, { // Assuming this endpoint
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}` // CEO token
+            },
+            body: JSON.stringify({
+                username: email, // Email as username for backend
+                password: password,
+                firstName,
+                lastName,
+                phoneNumber,
+                role: 'leader' // New admins are typically leaders
+            })
+        });
+
+        const data = await response.json();
+        newAdminMsg.textContent = data.message;
+        newAdminMsg.classList.remove('hidden');
+
+        if (response.ok) {
+            newAdminMsg.classList.remove('error-msg');
+            newAdminMsg.classList.add('success-msg');
+            displayTempMessage('New admin added successfully!', true);
+            document.getElementById('ceoLoginForm').reset(); // Clear form
+        } else {
+            newAdminMsg.classList.remove('success-msg');
+            newAdminMsg.classList.add('error-msg');
+            displayTempMessage(`Failed to add admin: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error adding new admin:', error);
+        newAdminMsg.textContent = 'Network error. Please try again.';
+        newAdminMsg.classList.remove('hidden');
+        newAdminMsg.classList.remove('success-msg');
+        newAdminMsg.classList.add('error-msg');
+        displayTempMessage('Network error adding admin.', false);
+    }
+}
+
+
+function calculRotation() {
+    console.log('Generating comprehensive report (simulated)...');
+    const ceoReportMsg = document.getElementById('ceoReportMsg');
+    ceoReportMsg.classList.remove('hidden');
+    ceoReportMsg.classList.remove('error-msg');
+    ceoReportMsg.classList.add('success-msg');
+    ceoReportMsg.textContent = 'Comprehensive report generation simulated. This would be a complex backend operation.';
+    displayTempMessage('Report generation simulated!', true);
+}
+
+
+// --- Initial Load Logic ---
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM Content Loaded. Initializing...');
+    // Check if a token exists, if so, try to show the appropriate panel
+    if (currentAuthToken && currentUserData.role) {
+        if (currentUserData.role === 'user') {
+            // In a real app, you'd verify the token with the backend first
+            showMainPlatform(currentUserData.fullName || currentUserData.email, 0, 0, currentUserData.referralCode); // Pass dummy financials for now
+        } else if (currentUserData.role === 'leader') {
+            showLeaderDashboard(currentUserData.fullName || currentUserData.email);
+        } else if (currentUserData.role === 'ceo') {
+            showCEODashboard();
+        } else {
+            showLogin(); // Fallback if role is unknown
+        }
+    } else {
+        showSignUp(); // Default to sign up if no token
+    }
+
+    // Initial fetch for admin/leader dashboards if they are shown on load
+    if (!document.getElementById('leaderPanel').classList.contains('hidden')) {
+        fetchPendingPayments();
+        fetchUserMessages();
+        fetchRotationData();
+        fetchAllUsersForAdmin();
+    }
+    if (!document.getElementById('ceoPanel').classList.contains('hidden')) {
+        fetchCEORotationHistory();
+        fetchAdminHistory();
+    }
+});
+
+// For the confirm dialog, replace with a custom modal in a production environment
+// window.confirm = (message) => {
+//     return customModalConfirm(message); // Implement your own modal
+// };
