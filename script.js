@@ -67,6 +67,7 @@ function showLogin() {
     const loginPanel = document.getElementById('loginPanel');
     if (loginPanel) {
         loginPanel.classList.remove('hidden');
+        loginPanel.style.display = 'block'; // ADDED: Force display to block
         console.log('FUNC: showLogin completed. Login panel should be visible.');
     } else {
         console.error('ERROR: loginPanel element not found!');
@@ -1253,7 +1254,6 @@ async function addAdmin() {
         console.error('Error adding new admin:', error);
         newAdminMsg.textContent = 'Network error. Please try again.';
         newAdminMsg.classList.remove('hidden');
-        newAdminMsg.classList.remove('success-msg');
         newAdminMsg.classList.add('error-msg');
         displayTempMessage('Network error adding admin.', false);
     }
