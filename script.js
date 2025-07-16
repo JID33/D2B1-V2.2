@@ -282,16 +282,35 @@ document.getElementById('loginForm').addEventListener('submit', async (event) =>
             loginMsg.classList.add('success-msg');
             displayTempMessage('Login successful!', true);
 
-            // Save authentication token and user data
-            saveAuthData(data.token, { email: email, role: data.role || 'user', fullName: data.fullName || email }); // Assuming backend returns role and full name
+            // Save authentication token and user data, including isPaid and isActive
+            saveAuthData(data.token, {
+                email: email,
+                role: data.role || 'user',
+                fullName: data.fullName || email,
+                isPaid: data.isPaid,   // Use actual isPaid from backend
+                isActive: data.isActive // Use actual isActive from backend
+            });
 
-            // Simulate payment status check (in real app, this would be from backend)
-            const isPaid = false; // Simulate user is not paid yet
-            if (!isPaid) {
-                showPaymentPanel(email);
+            // Redirect based on role and payment/active status
+            if (data.role === 'user') {
+                if (data.isPaid && data.isActive) {
+                    showMainPlatform(data.fullName || email, data.invest, data.gain, data.referralCode);
+                } else if (!data.isPaid) {
+                    showPaymentPanel(email);
+                } else { // User is active but not paid, or some other inactive state
+                    displayTempMessage('Your account is not active or payment is pending. Please contact support.', false);
+                    // Optionally, you might want a specific panel for inactive users
+                    // For now, keep them on login or show a generic message
+                    showLogin();
+                }
+            } else if (data.role === 'leader') {
+                showLeaderDashboard(data.fullName || email);
+            } else if (data.role === 'ceo') {
+                showCEODashboard();
             } else {
-                // If paid, show main platform directly
-                showMainPlatform(data.fullName || email, data.invest, data.gain, data.referralCode);
+                // Fallback for unknown roles
+                displayTempMessage('Unknown user role. Please contact support.', false);
+                showLogin();
             }
 
         } else {
@@ -345,13 +364,9 @@ document.getElementById('paymentForm').addEventListener('submit', async (event) 
             paymentMsg.classList.remove('error-msg');
             paymentMsg.classList.add('success-msg');
             displayTempMessage('Payment info submitted! Awaiting validation.', true);
-            // Simulate payment validation and show main platform after a delay
-            setTimeout(() => {
-                // In a real app, backend would update user status to 'paid'
-                currentUserData.isPaid = true; // Update local state
-                saveAuthData(currentAuthToken, currentUserData); // Save updated user data
-                showMainPlatform(currentUserData.fullName || currentUserData.email, 0, 0, currentUserData.referralCode); // Show main platform
-            }, 2000); // Simulate payment processing time
+            // After submitting payment, user should typically wait for leader validation
+            // No automatic redirect to main platform here, as validation is manual
+            showLogin(); // Go back to login, user can try again after validation
         } else {
             paymentMsg.classList.remove('success-msg');
             paymentMsg.classList.add('error-msg');
@@ -566,79 +581,152 @@ function showCEODashboard() {
     // In a real app, fetch CEO-specific data like rotation history, system activity
     fetchCEORotationHistory();
     fetchAdminHistory();
+    fetchGeneralHistory(); // Fetch general history for CEO
 }
 
 // Dummy fetch functions for leader/CEO dashboards
 async function fetchPendingPayments() {
-    console.log('Fetching pending payments (simulated)...');
+    console.log('Fetching pending payments...');
     const list = document.getElementById('pendingPaymentsList');
     list.innerHTML = '';
     document.getElementById('noPendingPayments').classList.remove('hidden'); // Assume no data initially
 
-    // In a real app, make an API call to /api/leader/pending-payments
-    // const response = await fetch(`${API_BASE_URL}/leader/pending-payments`, { headers: { 'Authorization': `Bearer ${currentAuthToken}` } });
-    // const payments = await response.json();
-    const payments = [
-        // { id: 'p1', userName: 'Alice Smith', amount: 25, method: 'Cash', status: 'Pending' },
-        // { id: 'p2', userName: 'Bob Johnson', amount: 25, method: 'MonCash', status: 'Pending' }
-    ]; // Simulated data
-
-    if (payments.length > 0) {
-        document.getElementById('noPendingPayments').classList.add('hidden');
-        payments.forEach(p => {
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <span>${p.userName} - $${p.amount.toFixed(2)} (${p.method}) - Status: <span class="status-unpaid">${p.status}</span></span>
-                <button onclick="validatePayment('${p.id}')">Validate</button>
-            `;
-            list.appendChild(li);
+    try {
+        const response = await fetch(`${API_BASE_URL}/leader/pending-payments`, {
+            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
         });
+        const payments = await response.json();
+
+        if (response.ok && payments.length > 0) {
+            document.getElementById('noPendingPayments').classList.add('hidden');
+            payments.forEach(p => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${p.userName} - $${p.amount.toFixed(2)} (${p.method}) - Status: <span class="status-unpaid">${p.status}</span></span>
+                    <button onclick="validatePayment('${p.id}')">Validate</button>
+                    <button style="background-color: #dc3545;" onclick="rejectPayment('${p.id}')">Reject</button>
+                `;
+                list.appendChild(li);
+            });
+        } else {
+            document.getElementById('noPendingPayments').classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error fetching pending payments:', error);
+        document.getElementById('noPendingPayments').textContent = 'Error loading payments.';
+        document.getElementById('noPendingPayments').classList.remove('hidden');
     }
 }
 
 async function validatePayment(paymentId) {
-    console.log(`Validating payment ${paymentId} (simulated)...`);
-    displayTempMessage(`Payment ${paymentId} validated! (Simulated)`, true);
-    // In a real app, send API call to /api/leader/validate-payment
-    fetchPendingPayments(); // Refresh list
-    fetchAllUsersForAdmin(); // Refresh user list as status might change
+    console.log(`Validating payment ${paymentId}...`);
+    try {
+        const response = await fetch(`${API_BASE_URL}/leader/validate-payment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            },
+            body: JSON.stringify({ paymentId })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            fetchPendingPayments(); // Refresh list
+            fetchAllUsersForAdmin(); // Refresh user list as status might change
+            fetchGeneralHistory(); // Refresh general history
+        } else {
+            displayTempMessage(`Validation failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error validating payment:', error);
+        displayTempMessage('Network error during payment validation.', false);
+    }
 }
 
+async function rejectPayment(paymentId) {
+    console.log(`Rejecting payment ${paymentId}...`);
+    try {
+        const response = await fetch(`${API_BASE_URL}/leader/reject-payment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            },
+            body: JSON.stringify({ paymentId })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            fetchPendingPayments(); // Refresh list
+            fetchGeneralHistory(); // Refresh general history
+        } else {
+            displayTempMessage(`Rejection failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error rejecting payment:', error);
+        displayTempMessage('Network error during payment rejection.', false);
+    }
+}
+
+
 async function fetchUserMessages() {
-    console.log('Fetching user messages (simulated)...');
+    console.log('Fetching user messages...');
     const list = document.getElementById('userMessagesList');
     list.innerHTML = '';
     document.getElementById('noUserMessages').classList.remove('hidden');
 
-    // In a real app, make an API call to /api/leader/messages
-    // const response = await fetch(`${API_BASE_URL}/leader/messages`, { headers: { 'Authorization': `Bearer ${currentAuthToken}` } });
-    // const messages = await response.json();
-    const messages = [
-        // { id: 'm1', sender: 'user@example.com', subject: 'Payment Issue', message: 'My payment is stuck.', read: false },
-        // { id: 'm2', sender: 'another@example.com', subject: 'Question', message: 'How does rotation work?', read: true }
-    ]; // Simulated data
-
-    if (messages.length > 0) {
-        document.getElementById('noUserMessages').classList.add('hidden');
-        messages.forEach(msg => {
-            const li = document.createElement('li');
-            li.classList.add(msg.read ? 'read' : 'unread');
-            li.innerHTML = `
-                <strong>From: ${msg.sender}</strong><br>
-                Subject: ${msg.subject}<br>
-                Message: ${msg.message}
-                ${!msg.read ? `<button onclick="markMessageRead('${msg.id}')">Mark as Read</button>` : ''}
-            `;
-            list.appendChild(li);
+    try {
+        const response = await fetch(`${API_BASE_URL}/leader/messages`, {
+            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
         });
+        const messages = await response.json();
+
+        if (response.ok && messages.length > 0) {
+            document.getElementById('noUserMessages').classList.add('hidden');
+            messages.forEach(msg => {
+                const li = document.createElement('li');
+                li.classList.add(msg.read ? 'read' : 'unread');
+                li.innerHTML = `
+                    <strong>From: ${msg.email}</strong><br>
+                    Subject: ${msg.subject}<br>
+                    Message: ${msg.message}
+                    ${!msg.read ? `<button onclick="markMessageRead('${msg.id}')">Mark as Read</button>` : ''}
+                `;
+                list.appendChild(li);
+            });
+        } else {
+            document.getElementById('noUserMessages').classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error fetching user messages:', error);
+        document.getElementById('noUserMessages').textContent = 'Error loading messages.';
+        document.getElementById('noUserMessages').classList.remove('hidden');
     }
 }
 
 async function markMessageRead(messageId) {
-    console.log(`Marking message ${messageId} as read (simulated)...`);
-    displayTempMessage(`Message ${messageId} marked as read! (Simulated)`, true);
-    // In a real app, send API call to /api/leader/messages/${messageId}/read
-    fetchUserMessages(); // Refresh list
+    console.log(`Marking message ${messageId} as read...`);
+    try {
+        const response = await fetch(`${API_BASE_URL}/leader/messages/${messageId}/read`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            }
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            fetchUserMessages(); // Refresh list
+            fetchGeneralHistory(); // Refresh general history
+        } else {
+            displayTempMessage(`Failed to mark message as read: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error marking message as read:', error);
+        displayTempMessage('Network error marking message as read.', false);
+    }
 }
 
 // Dummy data for rotation (will be replaced by backend data)
@@ -648,39 +736,52 @@ let currentRecipientIndex = -1;
 let dailyInvestmentAmount = 10; // Default
 
 async function fetchRotationData() {
-    console.log('Fetching rotation data (simulated)...');
-    // In a real app, fetch from backend: /api/rotation/settings, /api/rotation/participants
-    // For now, use dummy data or load from localStorage if available
-    const storedRotation = JSON.parse(localStorage.getItem('rotationData') || '{}');
-    rotationParticipants = storedRotation.participants || [];
-    currentRotationDay = storedRotation.currentDay || 0;
-    currentRecipientIndex = storedRotation.currentRecipientIndex !== undefined ? storedRotation.currentRecipientIndex : -1;
-    dailyInvestmentAmount = storedRotation.dailyInvestmentAmount || 10;
-
-    document.getElementById('currentRotationDay').textContent = currentRotationDay;
-    document.getElementById('dailyInvest').value = dailyInvestmentAmount;
-    updateRotationParticipantsList();
-    updateCurrentRecipientDisplay();
-
-    // Populate available members for rotation (simulated: all active/paid users)
+    console.log('Fetching rotation data...');
     const select = document.getElementById('availableMembersSelect');
     select.innerHTML = '<option value="">-- Select Paid & Active Member --</option>';
-    // In real app: fetch active and paid users from backend
-    // const usersResponse = await fetch(`${API_BASE_URL}/admin/users?status=active&paid=true`);
-    // const activePaidUsers = await usersResponse.json();
-    const activePaidUsers = [
-        // { id: 'u1', username: 'user1@example.com', fullName: 'User One', isPaid: true, isActive: true },
-        // { id: 'u2', username: 'user2@example.com', fullName: 'User Two', isPaid: true, isActive: true },
-    ]; // Simulated users
 
-    activePaidUsers.forEach(user => {
-        if (!rotationParticipants.some(p => p.id === user.id)) { // Don't add if already in rotation
-            const option = document.createElement('option');
-            option.value = user.id;
-            option.textContent = user.fullName || user.username;
-            select.appendChild(option);
+    try {
+        const rotationResponse = await fetch(`${API_BASE_URL}/rotation/data`, {
+            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
+        });
+        const rotationData = await rotationResponse.json();
+
+        if (rotationResponse.ok) {
+            rotationParticipants = rotationData.participants || [];
+            currentRotationDay = rotationData.currentDay || 0;
+            currentRecipientIndex = rotationData.currentRecipientIndex !== undefined ? rotationData.currentRecipientIndex : -1;
+            dailyInvestmentAmount = rotationData.dailyInvestmentAmount || 10;
+
+            document.getElementById('currentRotationDay').textContent = currentRotationDay;
+            document.getElementById('dailyInvest').value = dailyInvestmentAmount;
+            updateRotationParticipantsList();
+            updateCurrentRecipientDisplay();
+
+            // Fetch all active and paid users to populate the dropdown
+            const usersResponse = await fetch(`${API_BASE_URL}/admin/users`, {
+                headers: { 'Authorization': `Bearer ${currentAuthToken}` }
+            });
+            const allUsers = await usersResponse.json();
+
+            if (usersResponse.ok) {
+                const activePaidUsers = allUsers.filter(user => user.isActive && user.isPaid && user.role === 'user');
+                activePaidUsers.forEach(user => {
+                    if (!rotationParticipants.some(p => p.id === user.id)) { // Don't add if already in rotation
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = user.fullName || user.username;
+                        select.appendChild(option);
+                    }
+                });
+            } else {
+                console.error('Failed to fetch users for rotation dropdown:', allUsers.message);
+            }
+        } else {
+            console.error('Failed to fetch rotation data:', rotationData.message);
         }
-    });
+    } catch (error) {
+        console.error('Error fetching rotation data:', error);
+    }
 }
 
 function updateRotationParticipantsList() {
@@ -711,23 +812,35 @@ function updateCurrentRecipientDisplay() {
     }
 }
 
-function saveRotationSettings() {
+async function saveRotationSettings() {
     dailyInvestmentAmount = parseFloat(document.getElementById('dailyInvest').value);
     if (isNaN(dailyInvestmentAmount) || dailyInvestmentAmount <= 0) {
         displayTempMessage('Investment must be a positive number.', false);
         return;
     }
-    localStorage.setItem('rotationData', JSON.stringify({
-        participants: rotationParticipants,
-        currentDay: currentRotationDay,
-        currentRecipientIndex: currentRecipientIndex,
-        dailyInvestmentAmount: dailyInvestmentAmount
-    }));
-    displayTempMessage('Rotation settings updated!', true);
-    // In a real app, send to backend: /api/rotation/settings (PUT)
+    try {
+        const response = await fetch(`${API_BASE_URL}/rotation/settings`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            },
+            body: JSON.stringify({ dailyInvestmentAmount })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            fetchGeneralHistory(); // Refresh general history
+        } else {
+            displayTempMessage(`Failed to update settings: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error saving rotation settings:', error);
+        displayTempMessage('Network error saving rotation settings.', false);
+    }
 }
 
-function addParticipantToRotation() {
+async function addParticipantToRotation() {
     const select = document.getElementById('availableMembersSelect');
     const selectedUserId = select.value;
     const selectedUserName = select.options[select.selectedIndex].textContent;
@@ -741,30 +854,40 @@ function addParticipantToRotation() {
         return;
     }
 
-    const newParticipant = { id: selectedUserId, username: selectedUserName, fullName: selectedUserName }; // Simplified
-    if (!rotationParticipants.some(p => p.id === newParticipant.id)) {
-        rotationParticipants.push(newParticipant);
-        localStorage.setItem('rotationData', JSON.stringify({
-            participants: rotationParticipants,
-            currentDay: currentRotationDay,
-            currentRecipientIndex: currentRecipientIndex,
-            dailyInvestmentAmount: dailyInvestmentAmount
-        }));
-        updateRotationParticipantsList();
-        displayTempMessage(`${selectedUserName} added to rotation!`, true);
-        addParticipantMsg.classList.remove('error-msg');
-        addParticipantMsg.classList.add('success-msg');
-        addParticipantMsg.textContent = `${selectedUserName} added to rotation!`;
-        select.value = ''; // Clear selection
-        // In a real app, send to backend: /api/rotation/participants (POST)
-    } else {
-        addParticipantMsg.textContent = 'Participant is already in the rotation.';
+    try {
+        const response = await fetch(`${API_BASE_URL}/rotation/participants`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            },
+            body: JSON.stringify({ userId: selectedUserId, username: selectedUserName, fullName: selectedUserName })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            addParticipantMsg.classList.remove('error-msg');
+            addParticipantMsg.classList.add('success-msg');
+            addParticipantMsg.textContent = data.message;
+            select.value = ''; // Clear selection
+            fetchRotationData(); // Refresh list and dropdown
+            fetchGeneralHistory(); // Refresh general history
+        } else {
+            addParticipantMsg.textContent = `Failed to add participant: ${data.message}`;
+            addParticipantMsg.classList.remove('hidden');
+            addParticipantMsg.classList.add('error-msg');
+            displayTempMessage(`Failed to add participant: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error adding participant:', error);
+        addParticipantMsg.textContent = 'Network error adding participant.';
         addParticipantMsg.classList.remove('hidden');
         addParticipantMsg.classList.add('error-msg');
+        displayTempMessage('Network error adding participant.', false);
     }
 }
 
-function nextParticipant() {
+async function nextParticipant() {
     const rotationStatusMsg = document.getElementById('rotationStatusMsg');
     rotationStatusMsg.classList.add('hidden');
 
@@ -776,46 +899,40 @@ function nextParticipant() {
         return;
     }
 
-    currentRotationDay++;
-    currentRecipientIndex = (currentRecipientIndex + 1) % rotationParticipants.length;
-    const currentRecipient = rotationParticipants[currentRecipientIndex];
-
-    // Calculate gain (simplified: total pool = participants * daily investment)
-    const totalPool = rotationParticipants.length * dailyInvestmentAmount;
-    const recipientGain = totalPool; // For simplicity, recipient gets the whole pool
-
-    displayTempMessage(`Day ${currentRotationDay}: ${currentRecipient.fullName || currentRecipient.username} receives $${recipientGain.toFixed(2)}!`, true);
-
-    // Save history (simulated)
-    let history = JSON.parse(localStorage.getItem('ceoRotationHistory') || '[]');
-    history.push({
-        day: currentRotationDay,
-        recipient: currentRecipient.fullName || currentRecipient.username,
-        invest: dailyInvestmentAmount,
-        totalPool: totalPool,
-        gain: recipientGain,
-        timestamp: new Date().toLocaleString()
-    });
-    // Keep only last 25 entries
-    if (history.length > 25) {
-        history = history.slice(history.length - 25);
+    try {
+        const response = await fetch(`${API_BASE_URL}/rotation/next`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            }
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            // Update local state with new data from backend
+            currentRotationDay = data.rotationData.currentDay;
+            currentRecipientIndex = data.rotationData.currentRecipientIndex;
+            rotationParticipants = data.rotationData.participants; // Ensure participants are up-to-date
+            document.getElementById('currentRotationDay').textContent = currentRotationDay;
+            updateCurrentRecipientDisplay();
+            updateRotationParticipantsList(); // Update highlight
+            fetchCEORotationHistory(); // Refresh CEO history table
+            fetchGeneralHistory(); // Refresh general history
+            fetchAllUsersForAdmin(); // Refresh user list to show updated gains
+        } else {
+            rotationStatusMsg.textContent = `Rotation failed: ${data.message}`;
+            rotationStatusMsg.classList.remove('hidden');
+            rotationStatusMsg.classList.add('error-msg');
+            displayTempMessage(`Rotation failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error advancing rotation:', error);
+        rotationStatusMsg.textContent = 'Network error advancing rotation.';
+        rotationStatusMsg.classList.remove('hidden');
+        rotationStatusMsg.classList.add('error-msg');
+        displayTempMessage('Network error advancing rotation.', false);
     }
-    localStorage.setItem('ceoRotationHistory', JSON.stringify(history));
-
-
-    localStorage.setItem('rotationData', JSON.stringify({
-        participants: rotationParticipants,
-        currentDay: currentRotationDay,
-        currentRecipientIndex: currentRecipientIndex,
-        dailyInvestmentAmount: dailyInvestmentAmount
-    }));
-
-    document.getElementById('currentRotationDay').textContent = currentRotationDay;
-    updateCurrentRecipientDisplay();
-    updateRotationParticipantsList(); // Update highlight
-    fetchCEORotationHistory(); // Refresh CEO history table
-
-    // In a real app, send to backend: /api/rotation/next (POST)
 }
 
 
@@ -823,69 +940,138 @@ function nextParticipant() {
 let allUsers = []; // Stores all registered users (simulated)
 
 async function fetchAllUsersForAdmin() {
-    console.log('Fetching all users for admin (simulated)...');
+    console.log('Fetching all users for admin...');
     const tableBody = document.getElementById('adminUsersTable').querySelector('tbody');
     tableBody.innerHTML = '';
     document.getElementById('noUsersFound').classList.remove('hidden');
 
-    // In a real app, fetch from backend: /api/admin/users
-    // const response = await fetch(`${API_BASE_URL}/admin/users`, { headers: { 'Authorization': `Bearer ${currentAuthToken}` } });
-    // allUsers = await response.json();
-    allUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]'); // Load from simulated storage
-
-    if (allUsers.length > 0) {
-        document.getElementById('noUsersFound').classList.add('hidden');
-        allUsers.forEach(user => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${user.fullName || user.username}</td>
-                <td>${user.username}</td>
-                <td>${user.role || 'user'}</td>
-                <td><span class="${user.isPaid ? 'status-paid' : 'status-unpaid'}">${user.isPaid ? 'Paid' : 'Unpaid'}</span></td>
-                <td><span class="${user.isActive ? 'status-active' : 'status-inactive'}">${user.isActive ? 'Active' : 'Inactive'}</span></td>
-                <td>
-                    <button onclick="toggleUserStatus('${user.id}', ${user.isActive})">${user.isActive ? 'Deactivate' : 'Activate'}</button>
-                    <button onclick="toggleUserPaymentStatus('${user.id}', ${user.isPaid})">${user.isPaid ? 'Mark Unpaid' : 'Mark Paid'}</button>
-                    <button style="background-color: #dc3545;" onclick="deleteUser('${user.id}')">Delete</button>
-                </td>
-            `;
-            tableBody.appendChild(tr);
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/users`, {
+            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
         });
+        const users = await response.json();
+
+        if (response.ok && users.length > 0) {
+            document.getElementById('noUsersFound').classList.add('hidden');
+            allUsers = users; // Store fetched users
+            users.forEach(user => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${user.firstName || ''} ${user.lastName || ''}</td>
+                    <td>${user.username}</td>
+                    <td>${user.role || 'user'}</td>
+                    <td><span class="${user.isPaid ? 'status-paid' : 'status-unpaid'}">${user.isPaid ? 'Paid' : 'Unpaid'}</span></td>
+                    <td><span class="${user.isActive ? 'status-active' : 'status-inactive'}">${user.isActive ? 'Active' : 'Inactive'}</span></td>
+                    <td>
+                        <button onclick="toggleUserStatus('${user.id}', ${user.isActive})">${user.isActive ? 'Deactivate' : 'Activate'}</button>
+                        <button onclick="toggleUserPaymentStatus('${user.id}', ${user.isPaid})">${user.isPaid ? 'Mark Unpaid' : 'Mark Paid'}</button>
+                        <button style="background-color: #dc3545;" onclick="deleteUser('${user.id}')">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        } else {
+            document.getElementById('noUsersFound').classList.remove('hidden');
+        }
+    }
+    catch (error) {
+        console.error('Error fetching all users for admin:', error);
+        document.getElementById('noUsersFound').textContent = 'Error loading users.';
+        document.getElementById('noUsersFound').classList.remove('hidden');
     }
 }
 
 async function toggleUserStatus(userId, currentStatus) {
-    console.log(`Toggling status for user ${userId} to ${!currentStatus} (simulated)...`);
-    const userIndex = allUsers.findIndex(u => u.id === userId);
-    if (userIndex > -1) {
-        allUsers[userIndex].isActive = !currentStatus;
-        localStorage.setItem('registeredUsers', JSON.stringify(allUsers));
-        displayTempMessage(`User status updated to ${allUsers[userIndex].isActive ? 'Active' : 'Inactive'}!`, true);
-        fetchAllUsersForAdmin(); // Refresh table
-        // In a real app, send to backend: /api/admin/users/${userId}/status (PUT)
+    console.log(`Toggling status for user ${userId} to ${!currentStatus}...`);
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            },
+            body: JSON.stringify({ isActive: !currentStatus })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            fetchAllUsersForAdmin(); // Refresh table
+            fetchGeneralHistory(); // Refresh general history
+        } else {
+            displayTempMessage(`Status update failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error toggling user status:', error);
+        displayTempMessage('Network error during user status update.', false);
     }
 }
 
 async function toggleUserPaymentStatus(userId, currentPaidStatus) {
-    console.log(`Toggling payment status for user ${userId} to ${!currentPaidStatus} (simulated)...`);
-    const userIndex = allUsers.findIndex(u => u.id === userId);
-    if (userIndex > -1) {
-        allUsers[userIndex].isPaid = !currentPaidStatus;
-        localStorage.setItem('registeredUsers', JSON.stringify(allUsers));
-        displayTempMessage(`User payment status updated to ${allUsers[userIndex].isPaid ? 'Paid' : 'Unpaid'}!`, true);
-        fetchAllUsersForAdmin(); // Refresh table
-        // In a real app, send to backend: /api/admin/users/${userId}/payment-status (PUT)
+    console.log(`Toggling payment status for user ${userId} to ${!currentPaidStatus}...`);
+    try {
+        const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/payment-status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentAuthToken}`
+            },
+            body: JSON.stringify({ isPaid: !currentPaidStatus })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            displayTempMessage(data.message, true);
+            fetchAllUsersForAdmin(); // Refresh table
+            fetchGeneralHistory(); // Refresh general history
+        } else {
+            displayTempMessage(`Payment status update failed: ${data.message}`, false);
+        }
+    } catch (error) {
+        console.error('Error toggling user payment status:', error);
+        displayTempMessage('Network error during user payment status update.', false);
     }
 }
 
 async function deleteUser(userId) {
-    console.log(`Deleting user ${userId} (simulated)...`);
-    if (confirm('Are you sure you want to delete this user?')) { // Using confirm for demo, replace with custom modal
-        allUsers = allUsers.filter(u => u.id !== userId);
-        localStorage.setItem('registeredUsers', JSON.stringify(allUsers));
-        displayTempMessage('User deleted successfully! (Simulated)', true);
-        fetchAllUsersForAdmin(); // Refresh table
-        // In a real app, send to backend: /api/admin/users/${userId} (DELETE)
+    console.log(`Deleting user ${userId}...`);
+    // Replaced confirm() with a custom message box for better UX in an iframe environment
+    const confirmDelete = await new Promise(resolve => {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 1001; text-align: center;
+        `;
+        modal.innerHTML = `
+            <p>Are you sure you want to delete this user?</p>
+            <button id="confirmYes" style="margin-right: 10px;">Yes</button>
+            <button id="confirmNo" style="background-color: #6c757d;">No</button>
+        `;
+        document.body.appendChild(modal);
+
+        document.getElementById('confirmYes').onclick = () => { modal.remove(); resolve(true); };
+        document.getElementById('confirmNo').onclick = () => { modal.remove(); resolve(false); };
+    });
+
+    if (confirmDelete) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${currentAuthToken}`
+                }
+            });
+            const data = await response.json();
+            if (response.ok) {
+                displayTempMessage(data.message, true);
+                fetchAllUsersForAdmin(); // Refresh table
+                fetchGeneralHistory(); // Refresh general history
+            } else {
+                displayTempMessage(`User deletion failed: ${data.message}`, false);
+            }
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            displayTempMessage('Network error during user deletion.', false);
+        }
     }
 }
 
@@ -903,59 +1089,113 @@ function generateReferralCode() {
 
 // CEO Dashboard Functions
 async function fetchCEORotationHistory() {
-    console.log('Fetching CEO rotation history (simulated)...');
+    console.log('Fetching CEO rotation history...');
     const tableBody = document.getElementById('ceoRotationHistoryTable').querySelector('tbody');
     tableBody.innerHTML = '';
     document.getElementById('noRotationHistory').classList.remove('hidden');
 
-    const history = JSON.parse(localStorage.getItem('ceoRotationHistory') || '[]');
-
-    if (history.length > 0) {
-        document.getElementById('noRotationHistory').classList.add('hidden');
-        history.forEach(entry => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${entry.day}</td>
-                <td>${entry.recipient}</td>
-                <td>$${entry.invest.toFixed(2)}</td>
-                <td>$${entry.totalPool.toFixed(2)}</td>
-                <td>$${entry.gain.toFixed(2)}</td>
-                <td>${entry.timestamp}</td>
-            `;
-            tableBody.appendChild(tr);
+    try {
+        const response = await fetch(`${API_BASE_URL}/ceo/rotation-history`, {
+            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
         });
+        const history = await response.json();
+
+        if (response.ok && history.length > 0) {
+            document.getElementById('noRotationHistory').classList.add('hidden');
+            history.forEach(entry => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${entry.day}</td>
+                    <td>${entry.recipient}</td>
+                    <td>$${entry.invest.toFixed(2)}</td>
+                    <td>$${entry.totalPool.toFixed(2)}</td>
+                    <td>$${entry.gain.toFixed(2)}</td>
+                    <td>${new Date(entry.timestamp).toLocaleString()}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        } else {
+            document.getElementById('noRotationHistory').classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error fetching CEO rotation history:', error);
+        document.getElementById('noRotationHistory').textContent = 'Error loading rotation history.';
+        document.getElementById('noRotationHistory').classList.remove('hidden');
     }
 }
 
 async function fetchAdminHistory() {
-    console.log('Fetching admin activity history (simulated)...');
+    console.log('Fetching admin activity history...');
     const tableBody = document.getElementById('adminHistoryTable').querySelector('tbody');
     tableBody.innerHTML = '';
     document.getElementById('noAdminHistory').classList.remove('hidden');
 
-    // In a real app, fetch from backend: /api/ceo/activity-history
-    const history = [
-        // { timestamp: '2025-07-15 10:00:00', type: 'User Registered', description: 'New user Alice created account', details: 'Email: alice@example.com' },
-        // { timestamp: '2025-07-15 10:30:00', type: 'Payment Validated', description: 'Payment for Bob validated by Leader X', details: 'Amount: $25, Method: Cash' },
-    ]; // Simulated data
-
-    if (history.length > 0) {
-        document.getElementById('noAdminHistory').classList.add('hidden');
-        history.forEach(entry => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${entry.timestamp}</td>
-                <td>${entry.type}</td>
-                <td>${entry.description}</td>
-                <td>${entry.details}</td>
-            `;
-            tableBody.appendChild(tr);
+    try {
+        const response = await fetch(`${API_BASE_URL}/ceo/admin-history`, {
+            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
         });
+        const history = await response.json();
+
+        if (response.ok && history.length > 0) {
+            document.getElementById('noAdminHistory').classList.add('hidden');
+            history.forEach(entry => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${new Date(entry.timestamp).toLocaleString()}</td>
+                    <td>${entry.type}</td>
+                    <td>${entry.description}</td>
+                    <td>${JSON.stringify(entry.details) || 'N/A'}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        } else {
+            document.getElementById('noAdminHistory').classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error fetching admin history:', error);
+        document.getElementById('noAdminHistory').textContent = 'Error loading admin history.';
+        document.getElementById('noAdminHistory').classList.remove('hidden');
     }
 }
 
+// NEW: Fetch General History for CEO
+async function fetchGeneralHistory() {
+    console.log('Fetching general history for CEO...');
+    const tableBody = document.getElementById('generalHistoryTable').querySelector('tbody');
+    tableBody.innerHTML = '';
+    document.getElementById('noGeneralHistory').classList.remove('hidden');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/ceo/general-history`, {
+            headers: { 'Authorization': `Bearer ${currentAuthToken}` }
+        });
+        const history = await response.json();
+
+        if (response.ok && history.length > 0) {
+            document.getElementById('noGeneralHistory').classList.add('hidden');
+            history.forEach(entry => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${new Date(entry.timestamp).toLocaleString()}</td>
+                    <td>${entry.type}</td>
+                    <td>${entry.description}</td>
+                    <td>${JSON.stringify(entry.details) || 'N/A'}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        } else {
+            document.getElementById('noGeneralHistory').classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error fetching general history:', error);
+        document.getElementById('noGeneralHistory').textContent = 'Error loading general history.';
+        document.getElementById('noGeneralHistory').classList.remove('hidden');
+    }
+}
+
+
 async function addAdmin() {
-    console.log('Adding new admin (simulated)...');
+    console.log('Adding new admin...');
     const firstName = document.getElementById('newAdminFirstName').value;
     const lastName = document.getElementById('newAdminLastName').value;
     const phoneNumber = document.getElementById('newAdminPhoneNumber').value;
@@ -965,16 +1205,15 @@ async function addAdmin() {
 
     newAdminMsg.classList.add('hidden');
 
-    if (!email || !password || !firstName || !lastName) {
+    if (!email || !password || !firstName || !lastName || !phoneNumber) {
         newAdminMsg.textContent = 'All fields are required to add a new admin.';
         newAdminMsg.classList.remove('hidden');
         newAdminMsg.classList.add('error-msg');
         return;
     }
 
-    // In a real app, send to backend: /api/ceo/add-admin (POST)
     try {
-        const response = await fetch(`${API_BASE_URL}/ceo/add-admin`, { // Assuming this endpoint
+        const response = await fetch(`${API_BASE_URL}/ceo/add-admin`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -998,7 +1237,13 @@ async function addAdmin() {
             newAdminMsg.classList.remove('error-msg');
             newAdminMsg.classList.add('success-msg');
             displayTempMessage('New admin added successfully!', true);
-            document.getElementById('ceoLoginForm').reset(); // Clear form
+            // Clear form fields manually as form.reset() might not work on dynamically added inputs
+            document.getElementById('newAdminFirstName').value = '';
+            document.getElementById('newAdminLastName').value = '';
+            document.getElementById('newAdminPhoneNumber').value = '';
+            document.getElementById('newAdminEmail').value = '';
+            document.getElementById('newAdminPass').value = '';
+            fetchGeneralHistory(); // Refresh general history
         } else {
             newAdminMsg.classList.remove('success-msg');
             newAdminMsg.classList.add('error-msg');
@@ -1025,6 +1270,40 @@ function calculRotation() {
     displayTempMessage('Report generation simulated!', true);
 }
 
+// NEW: Export History to CSV
+function exportTableToCSV(tableId, filename = 'history.csv') {
+    const table = document.getElementById(tableId);
+    if (!table) {
+        displayTempMessage(`Table with ID '${tableId}' not found for export.`, false);
+        return;
+    }
+
+    let csv = [];
+    const rows = table.querySelectorAll('tr');
+
+    for (const row of rows) {
+        const cols = row.querySelectorAll('th, td');
+        const rowData = Array.from(cols).map(col => {
+            let text = col.innerText;
+            // Handle commas and quotes in data
+            if (text.includes(',') || text.includes('"')) {
+                text = `"${text.replace(/"/g, '""')}"`;
+            }
+            return text;
+        });
+        csv.push(rowData.join(','));
+    }
+
+    const csvString = csv.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    displayTempMessage(`Exported ${filename} successfully!`, true);
+}
+
 
 // --- Initial Load Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -1033,7 +1312,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentAuthToken && currentUserData.role) {
         if (currentUserData.role === 'user') {
             // In a real app, you'd verify the token with the backend first
-            showMainPlatform(currentUserData.fullName || currentUserData.email, 0, 0, currentUserData.referralCode); // Pass dummy financials for now
+            // Now use isPaid and isActive from currentUserData
+            if (currentUserData.isPaid && currentUserData.isActive) {
+                showMainPlatform(currentUserData.fullName || currentUserData.email, currentUserData.invest, currentUserData.gain, currentUserData.referralCode);
+            } else if (!currentUserData.isPaid) {
+                showPaymentPanel(currentUserData.email);
+            } else { // User is active but not paid, or some other state
+                displayTempMessage('Your account is not active or payment is pending. Please contact support.', false);
+                showLogin(); // Keep on login or show a specific inactive message
+            }
         } else if (currentUserData.role === 'leader') {
             showLeaderDashboard(currentUserData.fullName || currentUserData.email);
         } else if (currentUserData.role === 'ceo') {
@@ -1055,6 +1342,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!document.getElementById('ceoPanel').classList.contains('hidden')) {
         fetchCEORotationHistory();
         fetchAdminHistory();
+        fetchGeneralHistory(); // Fetch general history on CEO dashboard load
     }
 });
 
